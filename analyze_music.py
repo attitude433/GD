@@ -156,7 +156,18 @@ def _detect_bpm(
     all_candidates = [b for b in all_candidates if 20 <= b <= 300]
 
     scores = {b: _bpm_alignment_score(b, onset_times, duration) for b in all_candidates}
-    best_bpm = max(scores, key=scores.get)
+
+    # EDM/GD 음악 prior: 130~200 BPM 범위에 가중치 부여
+    # alignment 스코어가 비슷할 때 절반/두배 오류 보정용
+    def _edm_prior(bpm: float) -> float:
+        if 130 <= bpm <= 200:
+            return 1.15
+        if 100 <= bpm < 130 or 200 < bpm <= 240:
+            return 1.0
+        return 0.85  # 너무 느리거나 빠른 BPM 불이익
+
+    weighted = {b: s * _edm_prior(b) for b, s in scores.items()}
+    best_bpm = max(weighted, key=weighted.get)
 
     return {
         "value":      round(best_bpm, 2),
