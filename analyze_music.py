@@ -314,19 +314,35 @@ def save_json(analysis: dict, path: str) -> None:
 
 if __name__ == "__main__":
     import argparse
+    import os
+
+    MUSIC_DIR = os.path.join(os.path.dirname(__file__), "samples", "music")
+    RESULTS_DIR = os.path.join(os.path.dirname(__file__), "samples", "results")
+
+    def _default_out(filepath: str) -> str:
+        stem = os.path.splitext(os.path.basename(filepath))[0]
+        return os.path.join(RESULTS_DIR, stem + "_analysis.json")
 
     parser = argparse.ArgumentParser(description="GD 음악 분석기")
-    parser.add_argument("filepath", help="분석할 음악 파일 (mp3/wav/flac)")
+    parser.add_argument("filepath", help="분석할 음악 파일 (mp3/wav/flac) — 파일명만 입력하면 samples/music/ 에서 탐색")
     parser.add_argument("--start", type=float, default=None, help="분석 시작 시간 (초)")
     parser.add_argument("--end",   type=float, default=None, help="분석 종료 시간 (초)")
     parser.add_argument("--bpm",   type=float, default=None, help="BPM 직접 지정")
-    parser.add_argument("--out",   type=str,   default=None, help="JSON 출력 경로")
+    parser.add_argument("--out",   type=str,   default=None, help="JSON 출력 경로 (기본: samples/results/)")
     args = parser.parse_args()
 
-    print(f"[1/2] 분석 중: {args.filepath}", flush=True)
-    result = analyze(args.filepath, start=args.start, end=args.end, bpm=args.bpm)
+    # 파일명만 입력 시 samples/music/ 에서 자동 탐색
+    filepath = args.filepath
+    if not os.path.exists(filepath):
+        candidate = os.path.join(MUSIC_DIR, filepath)
+        if os.path.exists(candidate):
+            filepath = candidate
 
-    out_path = args.out or (args.filepath.rsplit(".", 1)[0] + "_analysis.json")
+    print(f"[1/2] 분석 중: {filepath}", flush=True)
+    result = analyze(filepath, start=args.start, end=args.end, bpm=args.bpm)
+
+    out_path = args.out or _default_out(filepath)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     save_json(result, out_path)
 
     print(f"[2/2] 저장 완료: {out_path}")
