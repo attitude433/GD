@@ -8,9 +8,10 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 ## 큰 그림 (3단계 파이프라인)
 
-### 1. 음악 분석
-- BPM, 비트 위치, 섹션, 드롭, 에너지 곡선 추출
-- 도구 후보: librosa
+### 1. 음악 분석 ✅ 완료
+- BPM, 비트 위치, 섹션, 에너지 곡선 추출 구현
+- librosa 멀티-전략 앙상블 BPM (극단값 억제 prior, 9곡 테스트 7/9 정확)
+- `analyze_music.py` — CLI: `python analyze_music.py 곡.mp3`
 
 ### 2. 레이아웃
 - 음악 정보 받아서 게임플레이 뼈대 구성
@@ -39,6 +40,7 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `test_roundtrip.py` — 왕복 검증
 - `physics_constants.py` — 물리 상수 (큐브/쉽/볼/UFO/웨이브 등)
 - `opengd_extracted.py` — OpenGD에서 추출한 게임 메커닉 데이터
+- `analyze_music.py` — 음악 분석 (BPM/비트/섹션/에너지, librosa 기반)
 
 ## 데이터 파일
 
@@ -46,6 +48,8 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `id_dictionary.json` — 우리 추출 사전 (4072개)
 - `id_dictionary_merged.json` — OpenGD 병합본 (4076개, 텍스처+타입+라벨)
 - `test_output.gmd` — 인코딩 테스트 결과 (게임에 import해서 동작 확인 가능)
+- `samples/music/` — 테스트용 음악 파일
+- `samples/results/` — 음악 분석 결과 JSON
 
 ## 데이터 형식
 
@@ -82,8 +86,10 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 | 물리 (큐브/쉽) | 90% | lily-pi + OpenGD 교차검증 |
 | 물리 (전체 모드) | 70% | 2.2 추가 모드 부분적 |
 | 게임 메커닉 | 80% | 패드/오브/포털 정확 |
-| 충돌 처리 | 75% | OpenGD 코드 기반 |
+| 충돌 처리 | 75% | OpenGD 코드 기반 (오브젝트별 히트박스 미확인) |
+| 음악 분석 | 90% | BPM/비트/섹션/에너지, 30개 테스트 통과 |
 | 데이터셋 | 5% | 9개만 (수백~수천 필요) |
+| 시뮬레이터 | 0% | 오브젝트 히트박스 데이터 필요 |
 | 생성 시스템 | 0% | 아직 시작 안 함 |
 
 ### 완료된 거
@@ -97,27 +103,35 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - 스피드 포털 5종 (x속도값)
 - Easing 19종, 트리거 ID 15종
 - GameObject 타입 39개 enum
-- 충돌 시스템 (Outer/Inner bounds)
+- 충돌 시스템 (Outer/Inner bounds, 플레이어 기준)
 - 시각화 (색깔 박스)
+- **음악 분석 모듈** (`analyze_music.py`)
+  - BPM 자동 감지 (librosa 멀티-전략, 극단값 억제 prior)
+  - 비트 타임스탬프, 섹션, RMS/저음/고음 에너지
+  - CLI: `python analyze_music.py 곡.mp3 [--bpm N]`
+  - 9곡 테스트 7/9 정확 (틀리면 --bpm으로 수동 지정)
+  - 테스트 파일: `samples/music/`, 결과: `samples/results/`
 
 ### 부족한 거
-- 2.2 신규 ID 약 460개 (게임 뜯어야 함)
+- **오브젝트별 히트박스 수치** ← 시뮬레이터 블로커, 게임 뜯어야 함
+  - 블록(ID 1), 스파이크(ID 8), 슬로프(ID 1734~) 등 충돌 박스 크기
+  - Show Hitboxes 모드 or Geode SDK로 추출 필요
+- 슬로프 충돌 로직 (AABB로 처리 불가)
+- 2.2 신규 ID 약 460개
 - 트리거 65종 동작 (OpenGD 미구현)
 - 로봇/스파이더/스웡 정확한 물리
 - 학습용 데이터셋
-- 음악 분석 모듈
 - 시뮬레이터/검증기
 - 생성 모델
 
 ## 다음 단계 (우선순위)
 
-1. **시뮬레이터 (큐브 모드)** — 지금 있는 데이터로 충분
-2. **데이터셋 확장** — GDBrowser API로 인기 레벨 수집
-3. **음악 분석 모듈** — librosa
+1. **게임 뜯기** — 오브젝트 히트박스 추출 (시뮬레이터 블로커)
+   - Geode SDK + Show Hitboxes / Mega Hack 모드
+2. **시뮬레이터 (큐브 모드)** — 히트박스 데이터 확보 후 진행
+3. **데이터셋 확장** — GDBrowser API로 인기 레벨 수집
 4. **레이아웃 생성** — 룰 베이스 → LLM 에이전트 → 학습
 5. **디자인 생성** — 색상/장식 추가
-6. **게임 뜯기** (필요시) — 2.2 신규 ID, 트리거 동작
-   - Geode SDK + Show Hitboxes / Mega Hack 모드
 
 ## 출처
 
@@ -130,6 +144,6 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 ## 환경
 
-- Python 3
-- 핵심 라이브러리: `gmdkit`, `matplotlib`
-- 향후: librosa, PyTorch, Pillow
+- Python 3.14
+- 핵심 라이브러리: `gmdkit`, `matplotlib`, `librosa`, `scipy`, `numpy`
+- 향후: PyTorch, Pillow

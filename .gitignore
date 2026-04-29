@@ -1,0 +1,23 @@
+# 음악 파일 (용량 큼)
+samples/music/
+
+# 분석 결과 (재생성 가능)
+samples/results/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 가상환경
+.venv/
+.venv311/
+
+# Claude 내부
+.claude/
+
+# 임시 파일
+test_160.json
+*.json.tmp
