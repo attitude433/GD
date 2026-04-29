@@ -316,6 +316,9 @@ git commit -m "feat: add _detect_onsets"
 
 ### Task 4: BPM 앙상블 감지 (`_detect_bpm`)
 
+> **변경:** madmom이 Python 3.14 미지원으로 librosa 단독 멀티-전략 앙상블로 대체.
+> beat_track (default) + tempogram 피크 + 절반/두배 후보 → onset alignment 스코어로 최선 선택.
+
 **Files:**
 - Modify: `analyze_music.py`
 - Modify: `tests/test_analyze_music.py`
@@ -337,7 +340,7 @@ def test_detect_bpm_source_valid():
     y, sr = make_beat_audio(bpm=120.0, duration=10.0)
     onset_times = _detect_onsets(y, sr)["times"]
     result = _detect_bpm(y, sr, onset_times)
-    assert result["source"] in ("librosa", "madmom", "user")
+    assert result["source"] in ("librosa", "user")
 
 
 def test_detect_bpm_accuracy_120():
@@ -375,6 +378,8 @@ Expected: `ImportError: cannot import name '_detect_bpm'`
 
 - [ ] **Step 3: `_detect_bpm` 구현 추가 (`analyze_music.py`)**
 
+`analyze_music.py` 상단 import에서 madmom 관련 줄을 제거하고 아래 함수들을 추가:
+
 ```python
 def _bpm_alignment_score(bpm: float, onset_times: list, duration: float) -> float:
     """주어진 BPM이 온셋 타임스탬프와 얼마나 잘 맞는지 0~1 스코어."""
@@ -396,37 +401,36 @@ def _detect_bpm(
     onset_times: list,
     user_bpm: float = None,
 ) -> dict:
-    """librosa + madmom 앙상블 BPM 감지."""
+    """librosa 멀티-전략 앙상블 BPM 감지 (절반/두배 오류 보정 포함)."""
     if user_bpm is not None:
         return {"value": float(user_bpm), "source": "user", "candidates": [float(user_bpm)]}
 
     duration = len(y) / sr
 
-    # librosa 후보
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr, hop_length=HOP_LENGTH)
-    tempo = float(np.atleast_1d(tempo)[0])
-    librosa_candidates = [tempo / 2, tempo, tempo * 2]
+    # 전략 1: beat_track default
+    tempo1, _ = librosa.beat.beat_track(y=y, sr=sr, hop_length=HOP_LENGTH)
+    tempo1 = float(np.atleast_1d(tempo1)[0])
 
-    # madmom 후보
-    try:
-        proc = RNNBeatProcessor()
-        sig = madmom_signal.Signal(y, sample_rate=sr, num_channels=1)
-        madmom_beats = proc(sig)
-        intervals = np.diff(madmom_beats)
-        bpm_madmom = float(60.0 / np.median(intervals)) if len(intervals) > 0 else tempo
-    except Exception:
-        bpm_madmom = tempo
+    # 전략 2: tempogram 피크 (주기 성분에서 직접 추출)
+    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=HOP_LENGTH)
+    tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=HOP_LENGTH)
+    tempo2 = float(np.atleast_1d(
+        librosa.beat.tempo(onset_envelope=oenv, sr=sr, hop_length=HOP_LENGTH)
+    )[0])
 
-    all_candidates = librosa_candidates + [bpm_madmom]
+    # 후보 풀: 두 전략 각각의 절반/그대로/두배
+    raw = {tempo1, tempo2}
+    all_candidates = []
+    for t in raw:
+        all_candidates += [t / 2, t, t * 2]
     all_candidates = [b for b in all_candidates if 20 <= b <= 300]
 
     scores = {b: _bpm_alignment_score(b, onset_times, duration) for b in all_candidates}
     best_bpm = max(scores, key=scores.get)
-    source = "madmom" if abs(best_bpm - bpm_madmom) < 1.0 else "librosa"
 
     return {
         "value":      round(best_bpm, 2),
-        "source":     source,
+        "source":     "librosa",
         "candidates": [round(b, 2) for b in sorted(set(all_candidates))],
     }
 ```
@@ -443,7 +447,7 @@ Expected: 전체 PASS
 
 ```bash
 git add analyze_music.py tests/test_analyze_music.py
-git commit -m "feat: add _detect_bpm with librosa+madmom ensemble"
+git commit -m "feat: add _detect_bpm with librosa multi-strategy ensemble"
 ```
 
 ---

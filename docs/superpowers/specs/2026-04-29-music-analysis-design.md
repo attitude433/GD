@@ -8,10 +8,11 @@
 
 ## 의존성
 
-- `librosa` — 스펙트럼 분석, 에너지 곡선, 섹션 감지
-- `madmom` — 딥러닝 기반 BPM/비트 트래킹 (EDM 장르에 강함)
+- `librosa` — 스펙트럼 분석, 에너지 곡선, 섹션 감지, BPM/비트 트래킹
 - `scipy` — 피크 감지 (드롭)
 - `numpy` — 수치 연산
+
+> **참고:** madmom은 Python 3.14 미지원으로 제외. BPM 앙상블을 librosa 멀티-전략으로 대체.
 
 ## 모듈 구조
 
@@ -73,11 +74,12 @@ python analyze_music.py song.mp3 [--start 10] [--end 120] [--bpm 174] [--out res
 
 ## BPM 앙상블 로직
 
-1. `librosa.beat.beat_track()` → `bpm_a` 추출, 후보 `[bpm_a/2, bpm_a, bpm_a*2]` 생성
-2. `madmom.features.beats.RNNBeatProcessor()` → 비트 타임스탬프 추출, 간격 중앙값으로 `bpm_b` 계산
-3. 전체 후보 풀에서 각 BPM을 예측 비트 그리드로 변환, 온셋 타임스탬프와의 alignment 스코어 계산
-4. 스코어 최고 후보 채택, `source` 필드에 출처 기록
-5. `--bpm` 인자 지정 시 전 과정 건너뛰고 `source: "user"` 로 기록
+1. `librosa.beat.beat_track()` default → `tempo1`
+2. `librosa.beat.tempo()` (tempogram 기반) → `tempo2`
+3. 두 값 각각 절반/그대로/두배 → 후보 풀 최대 6개 (20~300 BPM 필터)
+4. 각 후보를 비트 그리드로 변환, 온셋 타임스탬프와 alignment 스코어 계산
+5. 스코어 최고 후보 채택, `source: "librosa"` 로 기록
+6. `--bpm` 인자 지정 시 전 과정 건너뛰고 `source: "user"` 로 기록
 
 ## 섹션 감지 로직
 
