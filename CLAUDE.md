@@ -40,6 +40,8 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `test_roundtrip.py` — 왕복 검증
 - `physics_constants.py` — 물리 상수 (큐브/쉽/볼/UFO/웨이브 등)
 - `opengd_extracted.py` — OpenGD에서 추출한 게임 메커닉 데이터
+- `gdp_extracted.py` — camila314/gdp GD 2.2 디컴파일 결과 (물리 상수, 슬로프/충돌 로직)
+- `bindings_extracted.py` — geode-sdk/bindings 2.2081 (PlayerObject/GameObject 멤버 구조, enum)
 - `analyze_music.py` — 음악 분석 (BPM/비트/섹션/에너지, librosa 기반)
 
 ## 데이터 파일
@@ -86,7 +88,7 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 | 물리 (큐브/쉽) | 90% | lily-pi + OpenGD 교차검증 |
 | 물리 (전체 모드) | 70% | 2.2 추가 모드 부분적 |
 | 게임 메커닉 | 80% | 패드/오브/포털 정확 |
-| 충돌 처리 | 75% | OpenGD 코드 기반 (오브젝트별 히트박스 미확인) |
+| 충돌 처리 | 80% | 슬로프 로직 디컴파일 확보, 오브젝트별 히트박스 수치만 미확인 |
 | 음악 분석 | 90% | BPM/비트/섹션/에너지, 30개 테스트 통과 |
 | 데이터셋 | 5% | 9개만 (수백~수천 필요) |
 | 시뮬레이터 | 0% | 오브젝트 히트박스 데이터 필요 |
@@ -102,8 +104,11 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - 모드 전환 포털 7종, 부속 포털 다수
 - 스피드 포털 5종 (x속도값)
 - Easing 19종, 트리거 ID 15종
-- GameObject 타입 39개 enum
+- GameObject 타입 47개 enum (2.2 신규 8개 포함, bindings 기준)
 - 충돌 시스템 (Outer/Inner bounds, 플레이어 기준)
+- 슬로프 Y좌표 계산 함수 (`slopeYPos`) — GD 2.2 디컴파일 결과 그대로
+- 충돌 snap_up 임계값, 비행 속도 제한 등 물리 상수 확정 (gdp_extracted)
+- PlayerObject 멤버 변수 전체 구조 (bindings_extracted)
 - 시각화 (색깔 박스)
 - **음악 분석 모듈** (`analyze_music.py`)
   - BPM 자동 감지 (librosa 멀티-전략, 극단값 억제 prior)
@@ -113,12 +118,12 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
   - 테스트 파일: `samples/music/`, 결과: `samples/results/`
 
 ### 부족한 거
-- **오브젝트별 히트박스 수치** ← 시뮬레이터 블로커, 게임 뜯어야 함
-  - 블록(ID 1), 스파이크(ID 8), 슬로프(ID 1734~) 등 충돌 박스 크기
-  - Show Hitboxes 모드 or Geode SDK로 추출 필요
-- 슬로프 충돌 로직 (AABB로 처리 불가)
+- **오브젝트별 히트박스 수치** ← 시뮬레이터 블로커, 집에서 게임 뜯어야 함
+  - 블록(ID 1), 스파이크(ID 8) 등 m_objectRect 실제 값
+  - `tools/hitbox_dumper/` Geode 모드 작성 완료 → 빌드 후 게임 실행하면 추출됨
+  - 출력: `hitboxes.json` (히트박스) + `triggers.json` (트리거 속성)
 - 2.2 신규 ID 약 460개
-- 트리거 65종 동작 (OpenGD 미구현)
+- 트리거 65종 동작 (triggers.json 뽑으면 상당수 해결)
 - 로봇/스파이더/스웡 정확한 물리
 - 학습용 데이터셋
 - 시뮬레이터/검증기
@@ -126,8 +131,8 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 ## 다음 단계 (우선순위)
 
-1. **게임 뜯기** — 오브젝트 히트박스 추출 (시뮬레이터 블로커)
-   - Geode SDK + Show Hitboxes / Mega Hack 모드
+1. **게임 뜯기 (집)** — `tools/hitbox_dumper/` 빌드 → GD 실행 → hitboxes.json + triggers.json 추출
+   - Geode SDK 설치 → cmake 빌드 → .geode 파일 모드 폴더에 복사 → Object_IDs_New 레벨 입장
 2. **시뮬레이터 (큐브 모드)** — 히트박스 데이터 확보 후 진행
 3. **데이터셋 확장** — GDBrowser API로 인기 레벨 수집
 4. **레이아웃 생성** — 룰 베이스 → LLM 에이전트 → 학습
@@ -137,6 +142,8 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 - **lily-pi/GeometryPhysics** — 큐브/쉽 정확한 물리 공식
 - **OpenGD** (Open-GD/OpenGD) — GD 오픈소스 클론, 실제 게임 로직 코드
+- **camila314/gdp** — GD 2.2 바이너리 디컴파일 (물리 상수, 슬로프/충돌 로직 21개 함수)
+- **geode-sdk/bindings** — GD 2.2081 클래스 구조/멤버 변수 (PlayerObject, GameObject 등)
 - **OpenGD-RL** — OpenGD에 강화학습 붙인 사례
 - **DashBot 3.0** — 유전 알고리즘 봇
 - **Object_IDs_New 레벨** (Colon, ID 99784974) — ID 라벨 사전
