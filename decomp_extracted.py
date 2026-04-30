@@ -583,12 +583,62 @@ ADDITIONAL_DAT_CONSTANTS_R9 = {
 
 # 9차 dump 함수 — Spider + collisionCheckObjects sub-calls (큰 함수 위주)
 ROUND9_BIG_FUNCS = {
-    0x38f810: ("?_38f810", 744, "★ 거대 함수 — collisionCheckObjects 가 호출"),
+    0x38f810: ("collidedWithSlopeInternal", 744,
+               "★ 슬로프 충돌 정밀 처리 — Geode binding 확인됨"),
     0x211620: ("?_211620", 286, "GJBaseGameLayer 큰 함수 (collision 처리?)"),
     0x2168d0: ("?_2168d0", 209, "GJBaseGameLayer 함수"),
     0x3a0700: ("?_3a0700", 192, "PlayerObject 함수"),
     0x211260: ("?_211260", 173, "GJBaseGameLayer 함수"),
 }
+
+# =============================================================================
+# 10차: collidedWithSlopeInternal 분석 + 추가 DAT
+# =============================================================================
+
+# 핵심 새 DAT 상수
+DEG_TO_RAD = 0.017453292519943295  # DAT_1406229bc — pi/180 (도→라디안)
+RAD_TO_DEG_v2 = 57.29577951308232  # DAT_140623200 — 180/pi (라디안→도) v2
+
+ADDITIONAL_DAT_CONSTANTS_R10 = {
+    0x6229bc: ("DEG_TO_RAD = pi/180 = 0.017453",  "각도→라디안 변환"),
+    0x622b74: ("float 0.7",                       "슬로프 각도 비율?"),
+    0x622b8c: ("float 0.75",                      "슬로프 각도 비율?"),
+    0x622c54: ("float 1.1",                       "?"),
+    0x622cd8: ("float 1.4",                       "?"),
+    0x622d98: ("double 0.5",                      "half-block (BOX_HALF의 double 버전)"),
+    0x623120: ("float 20.0",                      "거리/높이 임계값"),
+    0x6231b0: ("float 40.0",                      "거리/높이 임계값"),
+    0x623200: ("float 57.2958 = 180/pi",          "라디안→도"),
+    0x6236f0: ("float -1.0",                      "음수 방향"),
+    0x6237c0: ("float -5.0",                      "음수 임계값"),
+}
+
+# 10차 추가 dump 함수
+ROUND10_FUNCS = {
+    0x38d350: ("?_38d350",                  44,
+               "PlayerObject — collidedWithSlopeInternal 가 호출 (작은 헬퍼)"),
+    0x38f2e0: ("collidedWithSlope_helper", 177,
+               "★ 슬로프 충돌 helper (slope angle 계산?)"),
+    0x3a43c0: ("?_3a43c0",                  94,
+               "PlayerObject — slope 처리 후 호출"),
+    0x24e530: ("?_24e530",                  93,
+               "GJBaseGameLayer — set lookup helper"),
+}
+
+COLLIDED_WITH_SLOPE_INTERNAL_NOTES = """
+collidedWithSlopeInternal (0x38f810, 744줄) 사용 sub-call:
+- slopeYPos (0x1a13b0) — 슬로프 Y 위치 계산 (이미 분석됨)
+- setPositionY (0x388d10) — Y 위치 설정 (snap 1/1000)
+- landGround (0x39bf30) — 착지 처리
+- updateCollide (0x393ff0) — collision direction 저장
+- updateSlopeRotation (0x390bc0) — 슬로프 위 player 회전
+- 0x38d350, 0x38f2e0, 0x3a43c0 (10차 추가 dump)
+
+DAT 상수 25개 사용 (반의 기본 상수 + 새 13개) — 슬로프별 mod tolerance 차이.
+
+다음 단계: 744줄 코드 직접 읽고 분기 패턴 정리 → opengd_extracted/gdp_extracted 의
+slopeYPos 와 통합 → 시뮬레이터 슬로프 정밀화.
+"""
 
 
 COLLISION_TRIGGER_MECHANISM = """
