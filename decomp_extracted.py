@@ -612,6 +612,38 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+TRANSFORM_TRIGGER_OVERRIDE = """
+32차 — TransformTriggerGameObject::triggerObject (0x4bc180, 1302줄) 분석:
+
+핵심 발견: base triggerObject (0x4a5f30) 와 거의 동일한 구조!
+유일한 차이는 line 76-79:
+
+  if (m_objectID == 0x813 (= 2067)) {  // SCALE 트리거
+      FUN_14021f4c0(layer, this);  // Scale-specific handler (91줄)
+      return;
+  }
+  // else: 모든 다른 case (Move/Color/Pulse/Toggle/Spawn/Collision/...) 는
+  //       base 와 똑같이 처리
+
+그래서 1302줄 = base 1297줄 + 5줄 (SCALE 분기).
+
+ID 2067 = SCALE 트리거 (gmdkit 검증):
+- used_keys: 155, 36, 150 (scale_x), 151 (scale_y)
+- target group 의 모든 obj 의 scale 변경 (Move/Color 변종 처리는 안 함)
+
+FUN_14021f4c0 (Scale handler, 91줄, 이미 dump 됨):
+- Scale 의 정확한 식 추출 가능
+
+시뮬 통합:
+- Move/Color/Pulse 등은 이미 분석 완료 (변경 X)
+- SCALE 트리거 만 추가:
+  for obj in target_group:
+      obj.scale_x = new_scale_x
+      obj.scale_y = new_scale_y
+      (duration > 0 면 보간)
+"""
+
+
 FUNCTION_LABEL_CORRECTIONS = """
 31차 — 함수 라벨 정정 (Geode binding 검증 후):
 
