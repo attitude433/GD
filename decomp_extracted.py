@@ -552,6 +552,52 @@ PHYSICS_MODE_TRANSITIONS = {
     0x212d10: ("switchToSpiderMode", 34, "PlayLayer 측 Spider mode 전환"),
 }
 
+PLAYER_PHYSICS_MAIN_FUNCS = {
+    0x388d80: ("PlayerObject::update",        570,
+               "★ player virtual update (per-frame orchestration)"),
+    0x38a0c0: ("PlayerObject::updateMove",    673,
+               "★★★ 모든 모드 물리 분기 통합 — Ship/UFO/Ball/Wave/Robot/Spider/Swing"),
+    0x38b900: ("PlayerObject::updateJump",    817,
+               "Jump 상태 업데이트 (모드 분기 없음 — updateMove 가 호출 전 mode-set)"),
+    0x39dc50: ("PlayerObject::updatePlayerFrame", 142,
+               "Frame (sprite) 업데이트"),
+    0x4bc180: ("TransformTriggerGameObject::triggerObject", 1302,
+               "Transform 트리거 — Move/Rotate/Scale 의 통합 처리 (base override)"),
+}
+
+PLAYER_UPDATE_CHAIN = """
+PlayerObject 매 프레임 업데이트 chain (디컴파일 추출):
+
+1. PlayerObject::update (0x388d80, 570줄)
+   - 가장 위 — orchestration
+   - mode flag 직접 체크 X (다른 곳에서 처리)
+   - 호출: 0x4d0770/0x17ab00 (lazy init), 0x2a6ed0, 0x39b4f0 (toggleFlyMode??)
+
+2. updateMove (0x38a0c0, 673줄) ★★★
+   - 진짜 모드별 물리 처리
+   - 모드 flag 분기 빈도 (top):
+       Spider (0x9be): 7회
+       Robot2 (0x9bd): 6회
+       Ship   (0x9b9): 6회
+       UFO    (0x9bb): 5회
+       Ball   (0x9ba): 4회
+       Wave   (0x9bc): 2회
+       Swing  (0x9c4): 2회
+       Robot  (0x9b1): 1회
+   - 호출: 0x3bdb0/0x3a830 (5회씩, CCRect 헬퍼?), slopeSnap 등
+
+3. updateJump (0x38b900, 817줄)
+   - 모드 flag 직접 체크 X — 큐브 점프 + dual mode 만 처리
+   - 호출: setPositionY (17회), 다른 sub-funcs
+
+4. updatePlayerFrame (0x39dc50, 142줄)
+   - sprite/animation 업데이트만
+
+→ 시뮬에 모드 추가하려면 updateMove (673줄) 정밀 분석 필수.
+   각 모드 분기당 ~80-90줄 처리 (Spider/Ship 등).
+"""
+
+
 COLLIDED_WITH_SLOPE_DETAILED = """
 13차 — collidedWithSlopeInternal (744줄, 0x38f810) 구조 분석:
 
