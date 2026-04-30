@@ -436,6 +436,83 @@ GAMEPLAY_MISC_FUNCS = {
 }
 
 # Collision 트리거 발동 메커니즘 (디컴파일 분석)
+# =============================================================================
+# 7차: Collision 트리거 fire 메커니즘 완전 추출
+# =============================================================================
+
+COLLISION_FIRE_FUNCS = {
+    0x2187d0: ("updateCollisionBlocks",  304,
+               "매 프레임 모든 collision_block 페어 체크 + enter/exit 트리거 발동 enqueue"),
+    0x218ec0: ("checkCollisionBlocks",    54,
+               "한 collision_block 의 모든 트리거 매칭 체크"),
+    0x218370: ("createPlayerCollisionBlock", 80,
+               "player 용 virtual collision_block 만들기 (P1/P2 각각)"),
+    0x214960: ("collisionCheckObjects",  729,
+               "player vs object 충돌 체크 (★ 큰 함수, slope/snap/squish 모두)"),
+    0x25c2e0: ("postCollisionCheck",      49,
+               "collision queue (param_1+0x2a8) 처리 → FUN_14025c540 호출"),
+    0x25c540: ("fireCollisionTrigger",    67,
+               "★ 진짜 트리거 fire 함수 — 등록 테이블 (param_1+0x248) 매칭 → 효과 적용"),
+    0x393ff0: ("PlayerObject_updateCollide", 110,
+               "player 의 collision direction 별 정보 저장 (PlayerCollisionDirection enum)"),
+}
+
+COLLISION_TRIGGER_FIRE_LAYOUT = """
+Collision 트리거 (1815) 등록 → 발동 전체 흐름:
+
+1. 트리거 등록 (registerCollisionTrigger = 0x25c430):
+   layer + 0x248 ~ + 0x250 = vector<CollisionTrigger> (each 56 bytes / 0x38):
+     +0x00 byte   on_exit_flag
+     +0x04 int    block_a_id
+     +0x08 int    block_b_id
+     +0x0c int    target_group_id
+     +0x10 uint   trigger_type / signature
+     +0x14 byte   activate_group (1 = on, 0 = off)
+     +0x18 int    unique_id
+     +0x1c int    control_id
+     +0x20      vector<int> remap_keys
+
+2. 매 프레임 collision check (updateCollisionBlocks = 0x2187d0):
+   - layer + 0xdc0 = CCArray<EffectGameObject*> (모든 collision_block 1816)
+   - updatePlayerCollisionBlocks (player → virtual collision_block 미러)
+   - 각 collision_block 위치/box 갱신 + 다른 block 과 overlap 체크
+   - overlap 감지 시 → enqueue to layer + 0x2a8 (collision event queue)
+   - exit 감지 시 → enqueue with on_exit flag
+
+3. queue 처리 (postCollisionCheck = 0x25c2e0):
+   - layer + 0x2a8 ~ 0x2b0 의 each entry _Memory[2] = encoded(blockA, blockB):
+       blockA = (val - 10000000) / 10000
+       blockB = val - 10000000 - blockA * 10000
+   - fireCollisionTrigger(layer, 0 (enter), blockA, blockB) 호출
+
+4. 실제 fire (fireCollisionTrigger = 0x25c540):
+   - layer + 0x248 의 등록 테이블 iterate (56-byte stride)
+   - 매칭 조건:
+       entry.on_exit_flag == 0 AND
+       entry.block_a == param_3 AND
+       entry.block_b == param_4 AND
+       entry.trigger_type != param_2
+   - 매칭 시 효과:
+       - layer.callback (+0x140) 있으면: callback(target_group, activate, remap_keys, unique_id, control_id)
+       - 없으면: toggleGroup direct (activate_group ? on : off)
+
+시뮬 통합:
+  - 우리 sim 의 collision_player_triggers 는 step 1 의 등록 테이블에 해당
+  - step_collision_triggers 는 step 4 의 fire 에 해당
+  - block-vs-block 은 step 2-3 의 enqueue + dequeue 가 빠져있음 → 다음 단계
+"""
+
+
+# =============================================================================
+# 0x4bc180 (1302줄) — base override 후보 확인 결과
+# =============================================================================
+
+# 0x4bc180 디컴파일 결과 (안 봤던 1302줄 함수):
+# parse_trigger_object 결과 = base 와 거의 동일 case 구조 (case 0xb55, 0xbbe..0xbcd 등)
+# → ColorTriggerObject 또는 PulseTriggerObject 등 파생 클래스의 triggerObject override.
+# 자세한 분석은 다음 단계.
+
+
 COLLISION_TRIGGER_MECHANISM = """
 실제 collision 트리거 (1815) 발동 흐름:
 
