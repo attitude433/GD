@@ -612,6 +612,56 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+REMAINING_TRIGGER_CASES = """
+43차 — 남은 작은 트리거 cases 모두 정리:
+
+★ COUNT (case 0x64c=1612, 0x64d=1613) — Counter increment/decrement:
+  0x64c: layer.player1.counter -= 1 (FUN_14038b440 with arg=0)
+  0x64d: layer.player1.counter += 1 (with arg=1)
+  → dual mode 면 player2 도 함께 처리
+
+★ TOUCH variant (case 0x714=1812):
+  큐 등록 (32 byte entry) at layer.colorMgr + 0x260:
+    [+0x00] flag
+    [+0x04] group_id
+    [+0x08] hold_flag
+    [+0x0c] player_index
+    [+0x10] uniqueID
+    [+0x18] vector<int> remap_keys
+  → 매 프레임 check; touch event 시 group fire
+
+★ TIMEWARP (case 0x78f=1935 in base):
+  layer + 0x334 = param_1[0x6f4]
+  → queued timewarp value (다음 프레임에 applyTimeWarp 호출)
+  ★ 이전 분석한 0x236150 (updateTimeWarp) 이 진짜 적용
+
+★ GRAVITY (case 0x812=2066):
+  player_select 분기 (param_1[0x6a6/0x6a5/0x6a4]):
+    flag clear: P1 + P2 모두 적용
+    P1 only: param_3 == 1
+    P2 only: param_3 == 2
+  → player[0xb84] = gravity_dir (param_1[0xdb])
+  ★ 시뮬에 직접 통합 가능
+
+★ Mode 변경 (case 0x77b=1915, 0x77d=1917):
+  0x77b: goto caseD_16 = mode portal 처리 (Ship/UFO/etc)
+  0x77d: vfunc 0x4d8(layer, this) = Layer-side mode change
+
+★ Touch Kill (case 0x78b=1931):
+  vfunc 0x450(layer, group_id, flag1, flag2)
+  → touch 시 group 전체 destroy/disable
+
+이로써 base triggerObject 의 모든 105 case 분석/분류 완료:
+- 시뮬 핵심 (가) 영향: ~12개 정밀 식 추출
+- 시각/오디오 (디자인 영향): ~15개 정밀 식 추출
+- 모드 portal (가/디 영향): 7개 (이미 옛 라운드 분석)
+- 카메라/visual (디자인): 5개 (39차)
+- 작은 보조: ~10개 (이번 라운드)
+
+GD 의 모든 트리거 메커니즘 dump + 분석 완료 ✅
+"""
+
+
 RANDOM_AND_COLOR_LEGACY = """
 42차 — RANDOM (case 0x778=1912) + Color Legacy (899/900/0x393) 정밀 식:
 
