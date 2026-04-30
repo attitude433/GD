@@ -612,6 +612,35 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+ITEM_VALUE_TYPES = """
+28차 — getItemValue (0x2341c0, 27줄) item type 매핑:
+
+double getItemValue(layer, type, id):
+  type 1: ITEM_COUNTER  → colorMgr 의 channel value (id 별)
+                          int 반환 (콜렉트 카운트)
+  type 2: TIMER         → timer 매니저 의 value (id 별)
+                          double 반환 (시간 경과)
+  type 3: TOTAL_DIAMONDS → layer + 0x864 (int)
+                          전체 다이아몬드 수
+  type 4: CURRENT_TIME   → layer + 0x3560 (double)
+                          현재 게임 시간 (초)
+  type 5: ATTEMPT_COUNT  → layer + 0x3084 (int)
+                          시도 횟수
+
+이게 ItemCompare/ItemEdit 트리거의 입력 타입!
+
+시뮬 통합:
+- type 1: 시뮬에서 collected_items[id] dict 추적
+- type 2: timer_value[id] dict, dt 마다 increment
+- type 3: 시뮬 시작 시 0, pickup item 시 ++
+- type 4: total_dt
+- type 5: 시뮬은 1회만 (1)
+
+ItemEdit 트리거: get → modify → set
+ItemCompare 트리거: get → 임계값과 비교 → trigger group fire
+"""
+
+
 TIMEWARP_FORMULA = """
 27차 — TIMEWARP 트리거 (case 0x78f=1935) 정밀 식 추출:
 
