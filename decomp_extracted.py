@@ -552,6 +552,58 @@ PHYSICS_MODE_TRANSITIONS = {
     0x212d10: ("switchToSpiderMode", 34, "PlayLayer 측 Spider mode 전환"),
 }
 
+COLLIDED_WITH_SLOPE_DETAILED = """
+13차 — collidedWithSlopeInternal (744줄, 0x38f810) 구조 분석:
+
+이 함수는 player 가 slope 와 충돌했을 때 모든 모드에 대해 다르게 처리.
+84개 player flag 분기 — GD 충돌 로직의 핵심.
+
+자주 체크되는 player member (top 10):
+  0x9bf (m_isUpsideDown): 18회 — 가장 많이 체크
+  0x9ba (m_isBall):       11회
+  0x9bc (m_isWave):       10회
+  0x9b9 (m_isShip):        9회
+  0x9c4 (m_isSwingCopter): 8회
+  0x9c3 (m_isRotated90):   7회
+  0x9b1 (m_isRobot):       7회
+  0x985 (m_jumpPressed):   7회
+
+→ 슬로프 충돌은 **모든 모드에 대해 다른 처리**. m_isUpsideDown 이 핵심 분기.
+
+핵심 DAT 상수 사용 빈도:
+  DAT_140622e60 = 2.0  (5회) — slope tolerance
+  DAT_140622e58 = 2.0  (4회) — slope margin
+  DAT_140623738 = -2.0 (4회) — 음수 방향
+  DAT_140623010 = 5.0  (3회) — cube tolerance
+  DAT_14062307c = 10.0 (3회) — default tolerance
+  DAT_140622cf0 = 0.1  (3회) — 시간 임계값
+  DAT_1406243d0 = NaN  (3회) — abs mask?
+
+호출 sub-function (chain):
+  - setPositionY (0x388d10): 5회 — 위치 자주 갱신
+  - playerDestroyed (via 17ab00): 2회 — 슬로프 hazard 사망 처리
+  - updateCollide (0x393ff0): 2회 — collision direction 저장
+  - slopeYPos (0x1a13b0): 1회 — 슬로프 Y 정확 계산
+  - landGround (0x39bf30): 1회 — 착지 처리
+  - updateSlopeRotation (0x390bc0): 1회 — 슬로프 위 회전
+  - 38d350, 38f2e0, 3a43c0: 보조 헬퍼
+
+처리 흐름 (개략):
+1. 자기 호출 방지 체크 (param_4 + FUN_14038f2e0)
+2. player rect, slope obj rect 추출 (vfunc 0x490)
+3. m_isFlying (0x16e) 분기 — 비행 모드면 다른 경로
+4. m_isUpsideDown × m_isRotated90 4가지 조합
+5. 각 모드별 (Ship/Ball/Wave/UFO/Swing/Robot/Spider) 따로 처리
+6. slopeYPos 로 정확한 Y 계산 → setPositionY
+7. landGround 또는 다른 처리 (point of contact 에 따라)
+
+시뮬 통합 의미:
+- 큐브 (현재 sim 사용) 는 16번 분기만 (m_isUpsideDown 만 분기)
+- 모든 모드 정확하게 시뮬하려면 744줄 전체 분석 필요
+- 우선순위: m_isFlying (Ship/UFO/Wave/Swing) 분기 정도면 큰 진전
+"""
+
+
 SPIDER_JUMP_DETAILED = """
 12차 — spiderTestJumpInternal (494줄) 정밀 분석:
 
