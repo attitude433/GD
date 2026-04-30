@@ -612,6 +612,34 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+BUMP_BOOST_NOTES = """
+23차 — bumpPlayer + boostPlayer 분석:
+
+bumpPlayer (0x39f6a0, 60줄):
+  - param_3 != 0x2c: just calls propellPlayer (= bump = pad jump)
+  - param_3 == 0x2c (44): SPECIAL — Spider gravity ring
+    - If gravity orientation differs: gravity flip
+    - Spider test jump (instant teleport)
+    - Broadcast event 0x12
+
+boostPlayer (0x39fee0, 76줄):
+  - 큐브 전용 (모든 mode flag 0):
+    - player.m_yVelocity = round(force * 1000) / 1000  ★ snap to 0.001
+    - Jump rotation 계산:
+        rotation_speed = (isUpsideDown ? +180 : -180) / fVar4
+        fVar4 = (speedMod == 1.0) ? DAT_140622bcc : DAT_140622b68
+    - player[0xe4] = rotation_speed
+    - player[0xe5] = 1 (rotating flag)
+  - 다른 모드 (Spider 외): play "fall_loop" sound
+  - 모든 모드: m_position 저장
+
+핵심 발견:
+- boostPlayer 는 큐브 전용 회전 효과 처리
+- m_yVelocity 직접 설정 (force 값 파라미터 그대로)
+- 회전 속도는 180 / TIME_SOMETHING (한 번 점프 시간에 한 바퀴)
+"""
+
+
 RING_JUMP_MULTIPLIERS = {
     # Ring/orb type 별 jump force multiplier (decomp 검증, ringJump 0x398c00)
     # 형식: (DAT_offset, value, ring_type, mode/조건, 의미)
