@@ -611,6 +611,60 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+SHIP_MODE_PHYSICS = """
+16차 — Ship 모드 물리 분기 정밀 추출 (updateMove L383-415):
+
+Ship 모드 (player[0x9b9] = 1) 의 Y-velocity 업데이트 식:
+
+설정 단계 (L370-382, 모든 모드 공통):
+  fVar21 = (player.attached_obj == 0) ? 0
+           : (player[0xd3].rotation * RAD_TO_DEG_v2) & ABS_MASK_FLOAT
+  dVar29 = clampf(fVar21, 40.0, 80.0) - 40.0) / 40.0    # 0~1 비율
+  dVar30 = dt * jumpForce * (dVar29 * 0.5 + 0.5) * 0.4  # 가속도 base
+
+Ship 분기 (L383-385):
+  if m_isShip:
+      dVar30 *= 0.7    # Ship 은 더 부드러운 가속 (DAT_140622dd0)
+
+Jump hold 처리 (L386-415):
+  if (jumpHeldDown AND yVelocity > 0) OR (jumpHeldUp AND yVelocity < 0):
+      # 점프 누른 채로 같은 방향 가속
+      dVar29 = (dVar29 * 0.7) + 1.35   # boost (DAT_140622e38)
+      # mode 별 추가 보정:
+      if m_isShip:
+          dVar29 += -0.25  # DAT_140623710
+      elif m_isUFO (0x9bb):
+          dVar29 += -0.28  # DAT_140623718
+      elif m_isSpider (0x9be):
+          dVar29 += -0.20  # DAT_140623708
+      # 공통:
+      if m_isDashing (0x165):
+          dVar29 *= 4.0  # DAT_140622e90
+      if (jumpHeld AND wasn't held last frame):
+          dVar29 *= 0.8  # DAT_140622de8
+      dVar29 *= dt * 0.5 * smoothFactor   # final 가속도
+
+  elif (반대 방향 jumpHeld):
+      dVar30 += dt   # base 가속만
+
+Final apply (L425):
+  player[0x15f] += smoothFactor * dVar30   # m_xVelocity update
+
+핵심 발견:
+- Ship 의 0.7 multiplier 가 "Ship 가속이 큐브보다 부드러움" 의 직접적 원인
+- Jump hold boost 1.35 가 "점프 누르면 더 빨라짐"
+- dash 모드 ×4 = 4배 가속
+
+시뮬 통합:
+- 큐브 (현재): 단순 jump + gravity
+- Ship 시뮬에 추가하려면:
+  1. m_yVelocity 처리: 매 프레임 base 가속 dVar30 적용
+  2. Ship 면 dVar30 *= 0.7
+  3. Jump 누르면 + 1.35 * mode_factor (Ship -0.25)
+  4. dash 면 *4
+"""
+
+
 UPDATE_MOVE_BRANCHES = """
 15차 — updateMove (673줄) 모드 분기 위치 매핑:
 
