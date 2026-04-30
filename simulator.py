@@ -62,6 +62,9 @@ class SimObject:
     # Move/Rotate 트리거가 갱신할 동적 오프셋 (시뮬 시작 시 0)
     dx: float = 0.0
     dy: float = 0.0
+    # Collision 트리거 입력 — Collision Block (id=1816) 의 block_id (.gmd key 80)
+    # 0 이면 collision block 아님
+    block_id: int = 0
 
 
 @dataclass
@@ -85,6 +88,11 @@ class TriggerInstance:
     spawn_trigger: bool = False  # True 면 X 기반 활성화 X — Spawn chain 으로만
     multi_trigger: bool = False  # True 면 매번, False 면 1 회만
     touch_trigger: bool = False  # True 면 터치 시
+    # Collision 트리거 (id=1815) 전용 — block_a/block_b 가 충돌하면 target_id 발동
+    # block 값 0 = "PLAYER" 특수 (P1 flag) / 양수 = collision_block ID
+    block_a: int = 0
+    block_b: int = 0
+    on_exit: bool = False        # True 면 충돌 시작 X, 끝날 때 발동
     # 시뮬 상태
     fired: bool = False          # 이미 발동했는지
     groups: tuple[int, ...] = ()
@@ -105,6 +113,11 @@ class Level:
     triggers: list[TriggerInstance] = field(default_factory=list)   # x 정렬됨
     groups: dict[int, list[SimObject]] = field(default_factory=dict)  # group_id → objects
     trigger_groups: dict[int, list[TriggerInstance]] = field(default_factory=dict)  # group_id → triggers
+    # Collision 트리거 (1815) lookup — block_b == 0 (PLAYER) 인 트리거만
+    # key = block_a ID (player 와 충돌하는 collision_block 의 block_id)
+    collision_player_triggers: dict[int, list[TriggerInstance]] = field(default_factory=dict)
+    # block_id > 0 sensor 객체들 (Collision 감지용 — player nearby 와 별도로 빠르게 iter)
+    block_id_objects: list[SimObject] = field(default_factory=list)
     _xs: list[float] = field(default_factory=list)   # bisect 용 X 키 (objects)
     _trigger_xs: list[float] = field(default_factory=list)            # bisect 용 X 키 (triggers)
 
@@ -145,6 +158,7 @@ def _parse_groups(value) -> tuple[int, ...]:
 def _build_trigger(obj: dict, decoded: dict) -> TriggerInstance:
     """디코드된 트리거 dict → TriggerInstance"""
     # spawn 트리거의 GROUP_ID(51) 와 일반 트리거의 TARGET_ID(51) 는 같은 키 — decoded 에선 둘 다 'target_id'
+    # COLLISION 트리거 (id=1815): key 80=block_a, key 95=block_b, key 93=on_exit (decomp 검증)
     return TriggerInstance(
         obj_id        = obj.get(1, 0),
         kind          = decoded.get("trigger_kind", "unknown"),
@@ -162,6 +176,10 @@ def _build_trigger(obj: dict, decoded: dict) -> TriggerInstance:
         spawn_trigger = bool(decoded.get("spawn_trigger", False)),
         multi_trigger = bool(decoded.get("multi_trigger", False)),
         touch_trigger = bool(decoded.get("touch_trigger", False)),
+        # Collision 트리거 (raw .gmd 키 fallback — decoded 가 매핑 못 했을 때)
+        block_a       = int(obj.get(80, 0) or 0),
+        block_b       = int(obj.get(95, 0) or 0),
+        on_exit       = bool(int(obj.get(93, 0) or 0)),
         groups        = _parse_groups(obj.get(57)),
     )
 
@@ -190,12 +208,37 @@ def load_level(gmd_path: str | Path,
         if oid is None:
             continue
 
-        kind, _ = classify(oid)
+        kind, trig_mod = classify(oid)
 
         # 트리거는 디코드해서 TriggerInstance 로
         if kind == "Trigger":
             decoded = decode_object(obj)
             triggers.append(_build_trigger(obj, decoded))
+            # COLLISION_BLOCK (1816) 은 사실 invisible 충돌 영역 — 트리거로 등록 + sensor 객체로도
+            # (hitboxes.json 에 없어서 30x30 invisible passthrough 디폴트, key 32/128/129 로 스케일)
+            if trig_mod == "collision_block":
+                scale_uniform = float(obj.get(32, 1.0) or 1.0)
+                scale_x = float(obj.get(128, scale_uniform) or scale_uniform)
+                scale_y = float(obj.get(129, scale_uniform) or scale_uniform)
+                sim_objs.append(SimObject(
+                    obj_id      = oid,
+                    x           = float(obj.get(2, 0)),
+                    y           = float(obj.get(3, 0)),
+                    rotation    = float(obj.get(6, 0)),
+                    w           = 30.0,    # 1 block default
+                    h           = 30.0,
+                    type        = -1,
+                    is_passable = True,    # 충돌 시 정지 X (sensor only)
+                    is_invisible= True,
+                    no_touch    = False,   # collision 트리거 발동을 위해 감지 ON
+                    z_layer     = int(obj.get(24, 0) or 0),
+                    scale_x     = scale_x,
+                    scale_y     = scale_y,
+                    flip_x      = bool(obj.get(4, 0)),
+                    flip_y      = bool(obj.get(5, 0)),
+                    groups      = _parse_groups(obj.get(57)),
+                    block_id    = int(obj.get(80, 0) or 0),
+                ))
             continue
 
         # 정적 오브젝트 — hitboxes.json 필요
@@ -232,6 +275,8 @@ def load_level(gmd_path: str | Path,
             flip_x       = bool(obj.get(4, 0)),
             flip_y       = bool(obj.get(5, 0)),
             groups       = _parse_groups(obj.get(57)),
+            # Collision Block (id=1816) 의 block_id (.gmd key 80)
+            block_id     = int(obj.get(80, 0) or 0),
         ))
 
     sim_objs.sort(key=lambda o: o.x)
@@ -247,12 +292,23 @@ def load_level(gmd_path: str | Path,
         for g in t.groups:
             trigger_groups.setdefault(g, []).append(t)
 
+    # Collision 트리거 (id=1815) 중 block_b == 0 (PLAYER 와 충돌) 만 indexable.
+    # 시뮬은 일단 player vs collision_block 만 지원 (block-block 충돌은 추후).
+    collision_player_triggers: dict[int, list[TriggerInstance]] = {}
+    for t in triggers:
+        if t.obj_id == 1815 and t.block_a > 0 and t.block_b == 0:
+            collision_player_triggers.setdefault(t.block_a, []).append(t)
+
+    block_id_objects = [o for o in sim_objs if o.block_id > 0]
+
     return Level(
         name           = meta.get("k2", "?"),
         objects        = sim_objs,
         triggers       = triggers,
         groups         = groups,
         trigger_groups = trigger_groups,
+        collision_player_triggers = collision_player_triggers,
+        block_id_objects = block_id_objects,
         _xs            = [o.x for o in sim_objs],
         _trigger_xs    = [t.x for t in triggers],
     )
@@ -377,7 +433,11 @@ def _fire_trigger(level: Level, t: TriggerInstance,
         apply_move(level, t, active_moves)
     elif t.kind == "spawn":
         apply_spawn(t, pending_spawns)
-    # rotate / collision / 등은 추후 단계에서
+    elif t.kind == "collision":
+        # Collision 트리거는 발동 시 target_id 그룹의 트리거들을 즉시 발동 (Spawn delay=0 과 동일).
+        # 게임에선 effect_func 가 직접 그룹 트리거 발동하지만, 시뮬에선 PendingSpawn 으로 통일.
+        apply_spawn(t, pending_spawns)
+    # rotate / 등은 추후 단계에서
 
 
 def apply_move(level: Level, t: TriggerInstance,
@@ -444,6 +504,42 @@ def update_pending_spawns(level: Level, pending: list[PendingSpawn],
             break
 
 
+def step_collision_triggers(level: Level, p: Player,
+                             prev_blocks: set[int],
+                             active_moves: list[ActiveMove],
+                             pending_spawns: list[PendingSpawn]) -> set[int]:
+    """
+    매 프레임 player AABB vs collision_block (block_id > 0) 검사.
+    enter/exit 이벤트로 COLLISION 트리거 (id=1815) 발동.
+
+    Returns: 이 프레임의 colliding block_ids (다음 프레임에 prev_blocks 로 전달)
+    """
+    if not level.collision_player_triggers:
+        return prev_blocks      # 시뮬할 collision 트리거 자체가 없으면 skip
+    current: set[int] = set()
+    for o in level.block_id_objects:
+        if not o.enabled:
+            continue
+        ox, oy, ow, oh = effective_box(o)
+        if aabb_overlap(p.x, p.y, p.w, p.h, ox, oy, ow, oh):
+            current.add(o.block_id)
+
+    entered = current - prev_blocks
+    exited  = prev_blocks - current
+
+    for bid in entered:
+        for t in level.collision_player_triggers.get(bid, ()):
+            if not t.on_exit:
+                _fire_trigger(level, t, active_moves, pending_spawns)
+
+    for bid in exited:
+        for t in level.collision_player_triggers.get(bid, ()):
+            if t.on_exit:
+                _fire_trigger(level, t, active_moves, pending_spawns)
+
+    return current
+
+
 def update_active_moves(active_moves: list[ActiveMove], dt: float) -> None:
     """
     매 프레임 진행 중인 Move 트리거의 부분 이동 적용.
@@ -500,6 +596,9 @@ def step_triggers(level: Level, prev_x: float, cur_x: float,
     fired = []
     for t in level.triggers[lo:hi]:
         if t.spawn_trigger or t.touch_trigger:
+            continue
+        # COLLISION (1815) 은 X 가 아니라 player vs collision_block 으로 발동 (step_collision_triggers)
+        if t.kind == "collision":
             continue
         if t.fired and not t.multi_trigger:
             continue
@@ -665,6 +764,7 @@ def run_simulation(level: Level,
     # 진행 중 트리거 상태
     active_moves:   list[ActiveMove]   = []
     pending_spawns: list[PendingSpawn] = []
+    collision_blocks: set[int]         = set()
 
     for f in range(max_frames):
         action = actions[f] if f < len(actions) else False
@@ -672,6 +772,9 @@ def run_simulation(level: Level,
         step_physics(p, jump=action)
         # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain)
         step_triggers(level, prev_x, p.x, active_moves, pending_spawns)
+        # Collision 트리거 (1815) — player vs collision_block enter/exit
+        collision_blocks = step_collision_triggers(level, p, collision_blocks,
+                                                    active_moves, pending_spawns)
         # delay 카운트다운 + Spawn chain
         update_pending_spawns(level, pending_spawns, active_moves, DT)
         # 진행 중 Move 보간 갱신
@@ -1061,6 +1164,52 @@ def _test_move_effect_duration():
     print(f"[OK] move effect (duration 1s): 보간 정확")
 
 
+def _test_collision_trigger():
+    """
+    COLLISION 트리거 (id=1815): player 가 collision_block 에 enter 하면
+    target_group 의 Move 트리거 발동 → spike 가 player 진로로 와서 사망.
+
+    구조:
+      - flat ground (group 없음)
+      - collision_block (id=1816) at x=300, block_id=42 (invisible sensor)
+      - spike (group 1) at x=315 y=200 (높이 화면 위)
+      - Move 트리거 (group 99, target=1, move_y=-180, spawn_trigger=True)
+      - COLLISION 트리거 (id=1815, block_a=42, block_b=0(P1), target_id=99)
+    """
+    # 평지
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(20)]
+    # spike — 처음엔 화면 위
+    spike = SimObject(obj_id=8, x=315, y=200, rotation=0, w=6, h=12,
+                      type=2, groups=(1,))
+    objs.append(spike)
+    # collision_block sensor (block_id=42, x=300, invisible) — player Y 위치 (45) 와 겹치게
+    sensor = SimObject(obj_id=1816, x=300, y=45, rotation=0, w=30, h=30,
+                       type=-1, is_passable=True, is_invisible=True,
+                       block_id=42)
+    objs.append(sensor)
+    objs.sort(key=lambda o: o.x)
+
+    spawned_move = TriggerInstance(obj_id=901, kind="move", x=10, y=10,
+                                   target_id=1, move_y=-155,
+                                   spawn_trigger=True,
+                                   groups=(99,))
+    coll_trig = TriggerInstance(obj_id=1815, kind="collision", x=10, y=10,
+                                target_id=99, block_a=42, block_b=0)
+    triggers = [spawned_move, coll_trig]
+    level = Level(name="t", objects=objs, triggers=triggers,
+                  groups={1: [spike]},
+                  trigger_groups={99: [spawned_move]},
+                  collision_player_triggers={42: [coll_trig]},
+                  block_id_objects=[sensor],
+                  _xs=[o.x for o in objs],
+                  _trigger_xs=[t.x for t in triggers])
+    res = run_simulation(level, actions=[False]*200)
+    assert not res.cleared and res.death_obj_id == 8, \
+        f"COLLISION → Move → 사망 기대: {res}"
+    print(f"[OK] collision trigger: enter sensor → fire Move → spike 끌림 → 사망 @ x={res.death_x:.1f}")
+
+
 if __name__ == "__main__":
     _test_aabb_overlap()
     _test_step_physics()
@@ -1079,3 +1228,4 @@ if __name__ == "__main__":
     _test_speed_portal()
     _test_easing_in_move()
     _test_spawn_chain()
+    _test_collision_trigger()
