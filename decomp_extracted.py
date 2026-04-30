@@ -612,6 +612,41 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+DERIVED_TRIGGER_OVERRIDES = """
+35차 — 모든 EffectGameObject 파생 클래스 triggerObject override 분류:
+
+검증된 14개 파생 클래스 + base:
+
+★ Base + Override 종류:
+  0x4a5f30 (1297줄) = base (105 case, 모든 핵심 트리거)
+  0x4bc180 (1302줄) = TransformTriggerGameObject (SCALE 2067 추가)
+  0x4bb210 (217줄) = TouchTriggerGameObject (TOUCH 1611, 1811, 1817)
+
+★ Camera/Mode 트리거 파생 (0x4bd820, 110줄):
+  - case 0x77a (1914) STATIC_CAMERA
+  - case 0x77c (1916) Camera move
+  - case 0x7df (2015) 게임 모드 전환
+  - case 0x80e (2062) Camera flag
+  - case 0xb6d (2925) Camera zoom
+
+★ 기타 작은 파생 (각 1-2 case 만):
+  0x4b41e0 (73줄): case 0x814 (2068 unknown)
+  0x4b4870 (177줄): 시각 (라벨 unknown)
+  0x4b88a0 (41줄): 작은 visual
+  0x4b91f0 (35줄): 작은 visual
+  0x4bccd0 (44줄): 작은 visual
+  0x4bf1e0 (47줄): case 0xe1e/0xe1f/0xe21
+  0x4bfcf0 (60줄): case 0xe23/0xe24/0xe39
+  0x4c3320 (161줄): 161줄 (BG/SFX 트리거 가능)
+  0x4c23f0 (161줄): BG texture 트리거 (3029-3030)
+
+대부분 시각/카메라/사운드 — 시뮬 무관.
+시뮬에 영향 큰 건 base + Transform + Touch 만.
+
+이로써 모든 derived class 식별 + 분류 완료.
+"""
+
+
 TOUCH_TRIGGER_FORMULA = """
 34차 — TOUCH 트리거 (ID 1611, case 0x64b) 분석 (TouchTriggerGameObject 0x4bb210):
 
