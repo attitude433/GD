@@ -31,6 +31,12 @@ from trigger_logic import (
     ACTION_PASS,
 )
 
+# Ring orb GameObjectType → ringJump kind (trigger_logic 의 RING_JUMP_MULTIPLIERS 키)
+_RING_TYPE_TO_KIND = {
+    11: "yellow", 12: "pink", 13: "gravity", 29: "green",
+    32: "drop", 35: "red",    37: "dash",     38: "gravity_dash",
+}
+
 
 # 큐브 모드 상수 (units 단위로 변환: 1 b/s = 30 units/s)
 CUBE_JUMP_VY  = CUBE["jump_velocity_bs"]     * BLOCK_SIZE   # 604.47 u/s
@@ -396,6 +402,9 @@ class Player:
     diamonds: int               = 0                              # type 3
     total_time: float           = 0.0                            # type 4 (cumulative dt)
     attempts: int               = 1                              # type 5
+    # Ring orb buffer: 현재 player 와 닿은 ring 들 (점프 입력 시 발동)
+    # ringJump (decomp): 클릭 (jump press) 시에만 fire — 닿기만 해선 X
+    touched_rings: list = field(default_factory=list)            # SimObject 리스트
 
 
 def step_physics(p: Player, jump: bool, dt: float = DT) -> None:
@@ -790,6 +799,41 @@ _COLLIDABLE_TYPES    = _SOLID_TYPES | _BREAKABLE_TYPES
 # Hazard 는 별도 (collidedWithObject 안 거치고 즉사)
 
 
+def step_ring_check(p: Player, level: Level) -> None:
+    """매 프레임 player 와 닿은 ring orb 들을 buffer 에 등록.
+
+    Ring 은 jump 입력 시에만 발동 (decomp 검증). 닿은 매 프레임 buffer 갱신.
+    이 함수가 step_physics 전에 호출되어야 jump 시점에 buffer 사용 가능.
+    """
+    p.touched_rings.clear()
+    for o in level.nearby(p.x, margin=200.0):
+        if not o.enabled or o.no_touch or o.z_layer < 0:
+            continue
+        if o.type not in _RING_TYPE_TO_KIND:
+            continue
+        if o.touched:    # 이미 사용된 ring
+            continue
+        ox, oy, ow, oh = effective_box(o)
+        if aabb_overlap(p.x, p.y, p.w, p.h, ox, oy, ow, oh):
+            p.touched_rings.append(o)
+
+
+def fire_ring_jump(p: Player) -> bool:
+    """jump 입력 시 buffer 에 있는 ring 발동. 발동 시 True 반환."""
+    if not p.touched_rings:
+        return False
+    ring = p.touched_rings[0]   # 가장 가까운 (먼저 등록된)
+    kind = _RING_TYPE_TO_KIND.get(ring.type, "yellow")
+    yvel, extras = ring_jump_yvel(kind, mode=p.mode, flip_mod=p.gravity_dir)
+    # GD 단위 → units/s (lily-pi 기준 *BLOCK_SIZE)
+    p.vy = yvel * BLOCK_SIZE
+    p.on_ground = False
+    if extras.get("gravity_flip"):
+        p.gravity_dir *= -1
+    ring.touched = True   # single-use
+    return True
+
+
 def step_dispatch(p: Player, level: Level) -> None:
     """
     Pad/Orb/Portal/Modifier 효과 — PlayLayer 디스패치 룰 (TYPE_DISPATCH).
@@ -812,8 +856,10 @@ def step_dispatch(p: Player, level: Level) -> None:
             continue
         action, args = TYPE_DISPATCH[o.type]
         _apply_dispatch_action(p, o, action, args, level)
-        # 패드/포털 등은 한 번만 (Pad 는 propellPlayer 후 재충돌 방지를 위해 GD 도 단발)
-        o.touched = True
+        # Pad/Portal/Modifier 등은 단발 (touched flag set);
+        # Ring orb 만 예외 — 클릭 시에만 발동, dispatch 는 buffer 에 등록만 (touched X)
+        if action != ACTION_RING_JUMP:
+            o.touched = True
 
 
 def _apply_dispatch_action(p: Player, o: SimObject, action: str,
@@ -830,10 +876,10 @@ def _apply_dispatch_action(p: Player, o: SimObject, action: str,
             p.gravity_dir *= -1
         return
     if action == ACTION_RING_JUMP:
-        # 점프 오브: 클릭 (이번 프레임 jump=True) 시에만 발동.
-        # 시뮬에선 매 프레임 점프 입력이 step_physics 에 들어가지만,
-        # 오브 클릭은 별도 — 여기선 단순화로 ring 닿으면 다음 점프 입력 시 발동.
-        # MVP: ring 무시, 추후 정밀화.
+        # 점프 오브: 클릭 (이번 프레임 jump=True) 시에만 발동 (decomp 검증).
+        # step_dispatch 에선 buffer 에 등록만 → run_simulation 에서 jump 입력과 매칭하여 발동.
+        if not o.touched:
+            p.touched_rings.append(o)
         return
     if action == ACTION_CHANGE_MODE:
         # 모드 전환은 다른 모드 물리 미구현이라 일단 mode 만 갱신
@@ -953,7 +999,16 @@ def run_simulation(level: Level,
         p.total_time += eff_dt
         for tid in p.timers:
             p.timers[tid] += eff_dt
-        step_physics(p, jump=action, dt=eff_dt)
+        # Ring orb 처리 (decomp 검증):
+        # 1. 매 프레임 buffer 갱신 (현재 닿은 ring 들)
+        # 2. jump 입력 + buffer 비어있지 않으면 → ring 발동 (normal jump 대신)
+        # 3. 그 외 normal step_physics
+        step_ring_check(p, level)
+        ring_fired = False
+        if action and p.touched_rings:
+            ring_fired = fire_ring_jump(p)
+        # ring 발동 후엔 normal jump 무시 (이미 vy set)
+        step_physics(p, jump=(action and not ring_fired), dt=eff_dt)
         # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain + gravity/teleport/timewarp)
         step_triggers(level, prev_x, p.x, active_moves, pending_spawns, player=p)
         # Collision 트리거 (1815) — player vs collision_block enter/exit
@@ -1467,6 +1522,34 @@ def _test_teleport_trigger():
     print(f"[OK] teleport trigger: instant move to (500, 200)")
 
 
+def _test_ring_orb_yellow():
+    """Yellow ring orb (type 11): jump 입력 시 fire_ring_jump 가 vy set.
+
+    검증: ring 위에서 jump=True 시 vy > 0 (음수 → 양수 변화).
+    """
+    # 평지 + ring
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(15)]
+    ring = SimObject(obj_id=36, x=200, y=45, rotation=0, w=30, h=30, type=11)
+    objs.append(ring)
+    objs.sort(key=lambda o: o.x)
+    level = Level(name="t", objects=objs, _xs=[o.x for o in objs])
+
+    p = Player(x=190, y=45, on_ground=True, vy=-100)   # 떨어지는 중
+    step_ring_check(p, level)
+    assert len(p.touched_rings) == 1 and p.touched_rings[0] is ring, \
+        f"ring 감지 실패: {len(p.touched_rings)}"
+    fired = fire_ring_jump(p)
+    assert fired, "ring 발동 실패"
+    assert p.vy > 0, f"ring 발동 후 vy>0 기대: {p.vy}"
+    assert ring.touched, "ring single-use mark 실패"
+    # 다시 시도하면 ring 사용됨
+    p.touched_rings.clear()
+    step_ring_check(p, level)
+    assert len(p.touched_rings) == 0, f"이미 used ring 재감지 X 기대: {len(p.touched_rings)}"
+    print(f"[OK] yellow ring orb: detect + fire (vy={p.vy:.0f}) + single-use")
+
+
 def _test_scale_rotate():
     """SCALE + ROTATE 트리거 — group obj 의 scale/rotation 변경."""
     obj1 = SimObject(obj_id=1, x=100, y=15, rotation=0, w=30, h=30, type=0,
@@ -1542,3 +1625,4 @@ if __name__ == "__main__":
     _test_teleport_trigger()
     _test_item_compare()
     _test_scale_rotate()
+    _test_ring_orb_yellow()
