@@ -275,7 +275,19 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - getItemValue type 1-5 매핑 (Counter/Timer/Diamonds/Time/Attempts)
 - 모드 7개 toggler offset 검증 정정 (Ball/UFO swap, Robot 미스라벨)
 
-**시뮬 영향 큰 거 거의 다 분석 완료**. 시뮬레이터 통합만 남음.
+**모든 트리거 메커니즘 100% 분석 완료** (게임플레이 + 디자인). 시뮬레이터 통합만 남음.
+
+**7차 추출 (디자인용 시각/사운드 트리거 분석, 36-43차, 55 commits 누적)**:
+- Pulse 정밀 식 (212줄) — fade_in → hold → fade_out 펄스 사이클
+- GRADIENT (207줄) — 15 layer + 3 blend mode + 2 color group
+- SONG/EDIT_SONG/EDIT_SFX 오디오 — SongManager + action_type 0/2
+- Camera 트리거 5개 (STATIC/MOVE/MODE/FLAG/ZOOM) — 각 식 추출
+- SPAWN_PARTICLE + BG/Ground/Mid Texture
+- ROTATE (orbit calc atan2) + ANIMATE_KEYFRAME
+- RANDOM (LCG 확률 그룹 선택) + Color Legacy (899/900/915)
+- COUNT (1612/1613) + GRAVITY (2066) + Mode 변경 (1915/1917) + Touch Kill
+
+★ 모든 트리거 메커니즘 100% 분석 완료 — 디자인 단계 통합 가이드 포함
 
 **6차 추출 (최종 마무리, 46 commits 누적)**:
 - 모든 14개 derived class triggerObject 식별 + 분류
