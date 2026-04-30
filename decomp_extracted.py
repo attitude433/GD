@@ -612,6 +612,61 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+ITEM_COMPARE_FORMULA = """
+29차 — ItemCompareTrigger (0x234630, 190줄) 정밀 식 추출:
+
+★ GD 의 가장 정밀한 산술 비교 트리거 — 두 값에 산술/라운드/abs 적용 → 비교
+
+EffectGameObject (param_2) 멤버 .gmd 키:
+- 0x6a0 (key 212): item_a_id
+- 0x694 (key 210): item_b_id
+- 0x740 (key 232): item_a_type (1-5, getItemValue type)
+- 0x744 (key 233): item_b_type
+- 0x754 (key 237): mod_op_a (1=add, 2=sub, 3=mul, 4=div)
+- 0x758 (key 238): mod_op_b
+- 0x764 (key 241): round_op_a (1=round, 2=floor, 3=ceil)
+- 0x768 (key 242): round_op_b
+- 0x76c (key 243): abs_op_a (1=abs, 2=negate)
+- 0x770 (key 244): abs_op_b
+- 0x74c (key 235): modifier_a (× 1000 → /1000)
+- 0x750 (key 236): modifier_b
+- 0x760 (key 240): tolerance (× 1000 → /1000)
+- 0x75c (key 239): compare_op (0-5)
+- 0x5c8 (key 51):  group_true_id
+- 0x5cc (key 52):  group_false_id
+
+값 계산 (val1):
+  val1 = getItemValue(item_a_type, item_a_id)
+  switch mod_op_a:
+    1: val1 += modifier_a
+    2: val1 -= modifier_a
+    3: val1 *= modifier_a
+    4: val1 /= modifier_a (modifier_a == 0 면 0)
+    else: val1 = 0
+  switch round_op_a: 1=round, 2=floor, 3=ceil (else 그대로)
+  switch abs_op_a: 1=abs, 2=-abs (else 그대로)
+
+val2 도 똑같이 (item_b_type==0 이면 그냥 modifier_b).
+
+비교:
+  0: |val1-val2| <= tolerance     (≈ 같음)
+  1: val1 + tolerance >  val2     (>)
+  2: val1 + tolerance >= val2     (>=)
+  3: val1 - tolerance <  val2     (<)
+  4: val1 - tolerance <= val2     (<=)
+  5: |val1-val2| >  tolerance     (≠)
+
+결과:
+  true → fire group_true_id
+  false → fire group_false_id
+
+시뮬 통합:
+- 매우 정밀한 식, 그대로 구현 가능
+- counter[item_a_id] 시뮬 추적 → 비교 → 적절한 그룹 fire
+- 게임플레이 분기 (예: "5점 이상이면 다음 구간 열림") 구현 가능
+"""
+
+
 ITEM_VALUE_TYPES = """
 28차 — getItemValue (0x2341c0, 27줄) item type 매핑:
 
