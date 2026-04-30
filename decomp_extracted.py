@@ -552,6 +552,56 @@ PHYSICS_MODE_TRANSITIONS = {
     0x212d10: ("switchToSpiderMode", 34, "PlayLayer 측 Spider mode 전환"),
 }
 
+SPIDER_JUMP_DETAILED = """
+12차 — spiderTestJumpInternal (494줄) 정밀 분석:
+
+Spider 점프 알고리즘 (ray-cast based instant teleport):
+
+1. 가능 여부 체크 (line 74-95):
+   - param_1[0x138] (locked) → return
+   - param_1+0xa2a (dead) → return
+   - param_1+0x7e1 (some flag) → return
+   - bVar2 = (NOT rotated AND NOT player[0x184]+0x311 AND
+            (m_isShip OR m_isBall OR m_isWave OR m_isSwingCopter OR m_isUFO OR m_isSpider))
+
+2. 검색 영역 계산 (line 96-126):
+   - DAT_1406235a0 = 3000.0  ★ 검색 거리 (= 100 블록 = 화면 7개분량!)
+   - DAT_140623294 = 90.0
+   - X 범위: player.x - 3000 ~ player.x + 3000
+   - rect (위 검색용 local_198, 아래 검색용 local_178)
+
+3. 분기 (m_isUpsideDown=0x9bf, m_isRotated90=0x9c3):
+   - 4가지 조합 (정상/거꾸로 × 정상/회전)
+   - 각각 다른 비교 함수: FUN_140386320/380/3e0/440 (Y 정렬)
+
+4. 후보 리스트 (line 193-218):
+   - this  = FUN_140211260(layer, rect, 1) — 위/주변 오브젝트
+   - this_00 = FUN_140211620(layer) — 다른 collision_block 들
+   - qsort 로 정렬 (compare 함수 4가지 중 하나)
+
+5. Main loop (line 226+):
+   - 정렬된 후보 list iterate
+   - 각 후보 obj 의 type (vfunc 0x660) check:
+       0x19 (25) = Slope object → slopeYPos 로 정확한 Y 계산
+   - 첫 valid collision 위치 → fVar25 = target Y
+   - player 위치 = (player.x, target Y) instant set (texture animation 추가)
+
+핵심 상수:
+- 검색 거리: 3000 units (100 블록)
+- DAT_140622e58 = 2.0 (margin)
+- DAT_140622ff0 = 4.0 (다른 margin)
+- DAT_140622c24 = 1.0 (offset)
+- DAT_140623730 = -2.0 (음수 margin)
+- DAT_1406237a8 = -4.0
+- DAT_14062307c = 10.0 (tolerance)
+
+시뮬 구현 가능:
+- 단순화: player 위 100b 안에서 첫 solid 찾기 → 거기까지 instant move
+- 정밀: 4가지 모드 (정상/거꾸로/회전/회전+거꾸로) 분기 + slope 처리
+- 중간 hazard 통과 시 사망 (line 280+의 type check 분기)
+"""
+
+
 ROBOT_SPIDER_PHYSICS_NOTES = """
 Robot/Spider 물리 메커니즘 분석 결과:
 
