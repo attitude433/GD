@@ -112,7 +112,7 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 | 데이터셋 | 5% | 9개만 (수백~수천 필요) |
 | 시뮬레이터 | 60% | 큐브+OpenGD 정밀+회전/스케일/no_touch/z_layer/flip 적용. 트리거 동작 깊이 부족 |
 | 트리거 catalog | 70% | 80개 분류·키매핑. 6 verified / 74 inferred. 동작 함수 3개만 구현 |
-| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 41 함수 + 30 DAT + triggerObject 105 case (D:\GhidraProjects\decomp/) |
+| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 199+ 함수 + 70+ DAT + 모든 모드/Item 시스템 식별 (D:\GhidraProjects\decomp/) |
 | 생성 시스템 | 0% | 아직 시작 안 함 |
 
 ### 완료된 거
@@ -254,9 +254,14 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `gmd_key = key_offset / 8` 검증 (gmdkit 표준과 5개 매칭)
 - `customSetup` 수동 추출 — `CUSTOM_SETUP_DEFAULTS` 18개 object의 디폴트 값
 - **★★★ `triggerObject` (0x4a5f30, 1297줄, 105 case) 발견** — Geode bindings 에서 주소 확인.
-  Move(0x385)→FUN_14021ea40, Color(0x3ee)→FUN_140260c40, Pulse(0x3ef)→FUN_140260a70,
-  Toggle(0x419)→toggleGroup, GRAVITY(0x812)/COLLISION(0x717)은 inline.
-  Spawn(0x4f4) 등은 파생 클래스 4개(0x4b9e10/0x4bb210/0x4bd820/0x4c23f0)에 override.
+- **★★★ `updateMove` (0x38a0c0, 673줄) 발견** — 모든 모드 물리 분기 통합 (Spider 7회/Robot 6회/Ship 6회/UFO 5회/Ball 4회/Wave/Swing 2회).
+- **★★ `Collision fire` 메커니즘 100% 추출** — register (0x25c430) → check (0x2187d0) → enqueue → fire (0x25c540).
+- **모든 7 모드 토글러 식별** — Ship/UFO=Bird/Wave=Dart/Ball=Roll/Robot/Spider/Swing.
+- **Spider 점프 분석** — 100블록(3000units) ray-cast → instant teleport.
+- **Item/Counter/Timer 시스템 발견** — processItems/getItemValue/activateItemCompare/Edit/Persistent/Timer.
+- **모드별 X-velocity 계수** — Ship ×0.7, UFO -0.28, Spider -0.20, dash ×4.0 등.
+- **collidedWithSlopeInternal (744줄) 식별** — 84개 mode 분기 (모든 모드별 다른 슬로프 처리).
+- 199+ 함수 + 70+ DAT 상수 검증, 23 commits 누적 — 모두 `decomp_extracted.py` 정리.
 
 **다음 작업 순서** (재정렬 — 4차 추출 후 깨달음 반영):
 
