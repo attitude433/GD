@@ -799,6 +799,28 @@ _COLLIDABLE_TYPES    = _SOLID_TYPES | _BREAKABLE_TYPES
 # Hazard 는 별도 (collidedWithObject 안 거치고 즉사)
 
 
+def fire_touch_triggers(level: Level, p: "Player",
+                         active_moves: list[ActiveMove],
+                         pending_spawns: list[PendingSpawn]) -> int:
+    """Touch 트리거 (touch_trigger=True, kind="touch" 또는 1611) 발동.
+
+    decomp 검증: jump 입력 시 등록된 모든 touch 트리거의 target_group fire.
+    GD 의 touch hold 옵션은 시뮬에서 단순화 (입력 프레임만 fire).
+    """
+    fired = 0
+    for t in level.triggers:
+        if not t.touch_trigger:
+            continue
+        if t.fired and not t.multi_trigger:
+            continue
+        # 발동: target_id 그룹의 트리거들을 spawn (Spawn 처럼)
+        if t.target_id:
+            pending_spawns.append(PendingSpawn(target_id=t.target_id, remaining=0.0))
+        t.fired = True
+        fired += 1
+    return fired
+
+
 def step_ring_check(p: Player, level: Level) -> None:
     """매 프레임 player 와 닿은 ring orb 들을 buffer 에 등록.
 
@@ -1007,6 +1029,9 @@ def run_simulation(level: Level,
         ring_fired = False
         if action and p.touched_rings:
             ring_fired = fire_ring_jump(p)
+        # Touch 트리거 (1611): jump 입력 시 등록된 group fire (decomp 검증)
+        if action:
+            fire_touch_triggers(level, p, active_moves, pending_spawns)
         # ring 발동 후엔 normal jump 무시 (이미 vy set)
         step_physics(p, jump=(action and not ring_fired), dt=eff_dt)
         # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain + gravity/teleport/timewarp)
@@ -1522,6 +1547,31 @@ def _test_teleport_trigger():
     print(f"[OK] teleport trigger: instant move to (500, 200)")
 
 
+def _test_touch_trigger():
+    """TouchTrigger (1611) — jump 입력 시 target_group fire."""
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(10)]
+    spawned_move = TriggerInstance(obj_id=901, kind="move", x=10, y=10,
+                                   target_id=1, move_y=-100,
+                                   spawn_trigger=True, groups=(99,))
+    touch_trig = TriggerInstance(obj_id=1611, kind="touch", x=10, y=10,
+                                  target_id=99, touch_trigger=True)
+    level = Level(name="t", objects=objs, triggers=[spawned_move, touch_trig],
+                  trigger_groups={99: [spawned_move]},
+                  _xs=[o.x for o in objs], _trigger_xs=[10, 10])
+    p = Player(x=0, y=105)
+    pending = []
+    fire_touch_triggers(level, p, [], pending)
+    assert len(pending) == 1 and pending[0].target_id == 99, \
+        f"touch fire → group 99 pending 기대: {pending}"
+    assert touch_trig.fired, "touch_trig fired flag set"
+    # 두 번째 호출 — multi_trigger=False 라서 다시 fire X
+    pending2 = []
+    fire_touch_triggers(level, p, [], pending2)
+    assert len(pending2) == 0, "single-fire 검증"
+    print(f"[OK] touch trigger: fire → group 99 spawn (single-fire)")
+
+
 def _test_ring_orb_yellow():
     """Yellow ring orb (type 11): jump 입력 시 fire_ring_jump 가 vy set.
 
@@ -1625,4 +1675,5 @@ if __name__ == "__main__":
     _test_teleport_trigger()
     _test_item_compare()
     _test_scale_rotate()
+    _test_touch_trigger()
     _test_ring_orb_yellow()
