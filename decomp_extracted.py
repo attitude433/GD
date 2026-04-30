@@ -612,6 +612,59 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+AUDIO_TRIGGERS_DETAILED = """
+38차 — Audio 트리거 3개 (SONG/EDIT_SONG/EDIT_SFX) 정밀 식 추출:
+
+★ SONG (case 0x78e=1934, FUN_1402415c0, 109줄):
+  - DAT_1406c2e88 = global SongManager
+  - param_2 멤버:
+    [0x7ec] = song_id (uint, ~ negate 처리)
+    [0x7ea] = stop_flag (1=stop, 0=play)
+    [0x760] = song_id (real ID, atoi)
+    [0x768] = volume / mod
+    [0x770] = fade_in/fade_out
+    [0x786] = loop flag
+    [0x774, 0x77c, 0x778, 0x780] = additional params
+
+  if NOT stop:
+    songPath = SongManager.getPath(song_id)
+    SongManager.playSound(path, volume_id, 0, fadeIn, loop, fadeOut, ...)
+  else:
+    SongManager.lookup(song_id).stop()
+
+★ EDIT_SONG (case 0xe15=3605, FUN_140241940, 30줄):
+  - param_2[0x7ec] = song_id
+  - param_2[0x5c8] = target_group_id
+  - layer.setSongProperty(song_id, action_type=2 (SONG), source)
+  - if group > 0: applyToGroup(song_id, 2, source)
+
+★ EDIT_SFX (case 0xe13=3603, FUN_140241e50, 123줄):
+  - 두 가지 처리 모드:
+
+  Mode A: group_a > 0 (param_2[0x7bc]):
+    - target group 안의 모든 SFX object (id 0xe12=3602) iterate
+    - 각 SFX 에 대해:
+        layer.setSongProperty(sfx_id, action_type=0 (SFX), source)
+        if target_group > 0: applyToGroup
+
+  Mode B: group_b > 0 (param_2[0x7b4]):
+    - 비슷한 처리, 다른 group 적용
+
+action_type 통합:
+  0 = SFX edit
+  2 = SONG edit
+
+★ 디자인 단계 통합:
+- 음악 분석 결과 (BPM, beat, section) → SONG 트리거로 secondary 음악 추가
+- 비트마다 짧은 SFX 트리거 발동 (드럼/심벌 등)
+- 음악 섹션 변경 시 EDIT_SONG (volume 변경 / fade in-out)
+- 강조 비트에 EDIT_SFX (cymbal crash 등 add)
+
+이로써 GD 의 모든 오디오 시스템 식 추출 완료.
+디자인 단계에서 BPM 동기화된 풍부한 사운드 시뮬 가능.
+"""
+
+
 GRADIENT_TRIGGER_DETAILED = """
 37차 — GRADIENT 트리거 (case 0xb57=2903) 정밀 식 (FUN_14021f750, 207줄):
 
