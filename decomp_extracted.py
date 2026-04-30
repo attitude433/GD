@@ -274,6 +274,148 @@ NEXT_DECOMPILE_TARGETS = [
 ]
 
 
+# =============================================================================
+# customSetup (0x4a87e0) — object ID 별 디폴트 멤버 값 (.gmd 파싱 전 초기 설정)
+# 141줄 if/else cascade 수동 추출 결과
+# =============================================================================
+
+CUSTOM_SETUP_DEFAULTS = {
+    # ID: { member_offset: (type, value), ... }
+    # 'trigger_kind' = param_1[0x81] (트리거 종류 분류 enum)
+
+    900:   {0x81: ("u4", 0x3f1), 0x5df: ("u1", 0), 0xb8: ("f", 1.0)},   # 0x384
+    29:    {0x81: ("u4", 1000),  0x5df: ("u1", 0), 0xb8: ("f", 1.0)},   # 0x1d
+    30:    {0x81: ("u4", 0x3e9), 0x5df: ("u1", 0), 0xb8: ("f", 1.0)},   # 0x1e (1001)
+    105:   {0x81: ("u4", 0x3ec), 0x5df: ("u1", 0), 0xb8: ("f", 1.0)},   # 0x69 (1004)
+    142:   {0x74: ("u4", 0x16),  0x84: ("u4", 9),  0x8a: ("zero_if_set", 0), 0x57a: ("u1", 1)},  # 0x8e
+    200:   {0xba: ("u1", 1)},                                            # 0xc8
+    201:   {0xba: ("u1", 1)},                                            # 0xc9
+    202:   {0xba: ("u1", 1)},                                            # 0xca
+    203:   {0xba: ("u1", 1)},                                            # 0xcb
+    744:   {0x81: ("u4", 0x3eb)},                                       # 0x2e8 (1003)
+    915:   {0x81: ("u4", 0x3ea), 0x5df: ("u1", 1)},                      # 0x393 (1002)
+    1329:  {0x74: ("u4", 0x1f),  0x84: ("u4", 9),                        # 0x531
+            0x285: ("u1", 1), 0x8a: ("zero_if_set", 0), 0x57a: ("u1", 1)},
+    1334:  {0xba: ("u1", 1)},                                            # 0x536
+    1912:  {0x5bc: ("f", 50.0)},                                         # 0x778 (RANDOM)
+    2066:  {0xdb: ("f", 1.0)},                                           # 0x812 (GRAVITY)
+    3607:  {0xd2: ("u1", 1)},                                            # 0xe17
+    3640:  {0xba: ("u2", 1), 0xd2: ("u1", 1)},                           # 0xe38
+    3643:  {0xba: ("u2", 1)},                                            # 0xe3b
+}
+
+# 두 번째 분기 (LAB_1404a8a1d) — 이 ID 들은 m_isActiveTrigger=1 (offset 0x73b):
+ACTIVE_TRIGGER_IDS = {0x778, 0x63b, 0x8e, 0x4f4, 0x531, 0x64b, 0x713,
+                      0x717, 0x80f, 0x814, 0xe19, 0xe24, 0xe14, 0xe17, 0xe38, 0xe3b,
+                      # 변환: iVar2-0xe14 == 0 이면 0xe14, ==3 이면 0xe17 (bVar3 마지막 식)
+                      }
+# 그 외: m_isActiveTrigger = (param_1[0x74] == 0x1e ? 1 : 0)
+
+# trigger_kind 코드 (param_1[0x81]):
+TRIGGER_KIND_CODES = {
+    1000: "trigger_kind_default (object 29 = ?)",
+    1001: "trigger_kind_alt    (object 30 = ?)",
+    1002: "trigger_kind_color_legacy (object 915, BG color trigger 변종)",
+    1003: "trigger_kind_pulse  (object 744 = PULSE trigger 구버전)",
+    1004: "trigger_kind_for_105 (object 105 = GRADIENT/STATIC)",
+    1009: "trigger_kind_for_900 (object 900 = ?)",
+}
+
+
+# =============================================================================
+# customObjectSetup → .gmd 키 → 멤버 매핑 dict 생성 (parse_custom_object_setup.py 결과 import)
+# =============================================================================
+
+import json as _json
+from pathlib import Path as _Path
+
+def _load_setup_extraction() -> dict:
+    """custom_object_setup_extracted.json 을 읽어서 다음 형식으로 변환:
+
+    {
+      object_id: [   # case ID, -1 = 모든 EffectGameObject 공통 (top-level)
+        (gmd_key_code, parser, member_offset, store_type),
+        ...
+      ]
+    }
+    """
+    src = _Path(__file__).parent / "custom_object_setup_extracted.json"
+    if not src.exists():
+        return {}
+    raw = _json.loads(src.read_text(encoding="utf-8"))
+    out = {}
+    for cid_str, entries in raw["extracted"].items():
+        cid = int(cid_str)
+        rows = []
+        for e in entries:
+            koff = int(e["key_offset"], 16)
+            gmd_key = koff // 8
+            mem = int(e["member_offset"], 16) if e["member_offset"] else None
+            rows.append((gmd_key, e["parser"], mem, e["store_type"]))
+        out[cid] = rows
+    return out
+
+GMD_KEY_TO_MEMBER = _load_setup_extraction()
+"""GMD 키 → 트리거 멤버 매핑 — 통합 dict.
+
+사용 예 (시뮬레이터에서):
+    common = decomp_extracted.GMD_KEY_TO_MEMBER.get(-1, [])  # 모든 트리거 공통
+    obj_specific = decomp_extracted.GMD_KEY_TO_MEMBER.get(1815, [])  # COLLISION 트리거
+    for gmd_key, parser, member_off, store_type in common + obj_specific:
+        if str(gmd_key) in obj_data_dict:
+            value = (atoi if parser == 'atoi' else atof)(obj_data_dict[str(gmd_key)])
+            # → 시뮬레이터의 trigger 객체 멤버에 저장
+"""
+
+# 자주 쓰이는 .gmd 키 코드 (gmdkit 표준):
+GMD_KEYS_COMMON = {
+    1:   "object_id",
+    2:   "x",
+    3:   "y",
+    6:   "rotation",
+    7:   "color_r",      # also ID 105 trigger 입력
+    8:   "color_g",
+    9:   "color_b",
+    10:  "duration",       # ★ 트리거 지속 시간
+    11:  "trigger_event",
+    15:  "color_blend",
+    17:  "blending",
+    21:  "color_id",      # = 36 ?
+    23:  "primary_color_id",
+    25:  "z_order",
+    28:  "move_x",        # ★ Move 트리거 X 변화량
+    29:  "move_y",        # ★ Move 트리거 Y 변화량
+    30:  "easing",        # ★ 이징 type
+    35:  "opacity",
+    36:  "secondary_color_id",  # 또는 group ID
+    51:  "target_group_id",  # ★ 트리거가 영향 주는 그룹
+    56:  "active_trigger",
+    58:  "lock_player_x",  # ★ Move 트리거 옵션
+    59:  "lock_player_y",
+    62:  "spawn_triggered",
+    66:  "extra_flag_66",
+    71:  "use_target",
+    80:  "block_a",       # ★ COLLISION 트리거
+    85:  "easing_rate",   # ★ 이징 강도
+    93:  "trigger_on_exit",  # ★ COLLISION 트리거
+    95:  "block_b",       # ★ COLLISION 트리거
+    115: "spawn_delay",
+    138: "P1",            # 플레이어 1 대상
+    142: "extra_flag_142",
+    144: "fade_in_time",
+    155: "group_parents",
+    200: "fade_out_time",
+    280: "extra_flag_280",
+    284: "extra_flag_284",
+    381: "extra_flag_381",
+    383: "extra_id_383",
+    394: "extra_flag_394",
+    395: "extra_id_395",
+    397: "extra_flag_397",
+    463: "extra_flag_463",
+}
+
+
 if __name__ == "__main__":
     print(f"PlayerObject 멤버 오프셋: {len(PLAYER_OFFSETS)}개 검증")
     print(f"DAT 상수: {sum(1 for k, v in vars().items() if k.isupper() and isinstance(v, (int, float)))}개")
