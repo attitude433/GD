@@ -259,9 +259,23 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - **모든 7 모드 토글러 식별** — Ship/UFO=Bird/Wave=Dart/Ball=Roll/Robot/Spider/Swing.
 - **Spider 점프 분석** — 100블록(3000units) ray-cast → instant teleport.
 - **Item/Counter/Timer 시스템 발견** — processItems/getItemValue/activateItemCompare/Edit/Persistent/Timer.
-- **모드별 X-velocity 계수** — Ship ×0.7, UFO -0.28, Spider -0.20, dash ×4.0 등.
-- **collidedWithSlopeInternal (744줄) 식별** — 84개 mode 분기 (모든 모드별 다른 슬로프 처리).
-- 199+ 함수 + 70+ DAT 상수 검증, 23 commits 누적 — 모두 `decomp_extracted.py` 정리.
+- **모드별 X-velocity 계수** — Ship ×0.7, Spider -0.20, dash ×4.0 등.
+- **collidedWithSlopeInternal (744줄) 식별** — 84개 mode 분기.
+- 199+ 함수 + 86+ DAT 상수 검증, 40 commits 누적 — 모두 `decomp_extracted.py` 정리.
+
+**5차 추출 (2026-04-30 마무리)** — 정밀 식 추출 완료:
+- propellPlayer (패드 점프) — `force × 16.0 × speed_factor`, air mode ×0.6
+- ringJump 16개 mode/type별 multiplier (Ship 0.37, UFO 0.42, Ball 0.77, Spider 1.38 등)
+- TIMEWARP `clampf(x, 0.1, 2.0)` → cocos timeScale
+- TELEPORT (target_id obj 위치로 instant move + random 선택)
+- PLAYER_CONTROL (stop_jump/left_right/rotation/slide 별 player flag clear)
+- FOLLOW_PLAYER_Y (group dy = player_dy * speed action 등록)
+- ItemCompare 정밀 식 (val1 산술 → 6 비교 op → group fire)
+- ItemEdit 정밀 식 (두 값 결합 + 산술 → counter/timer/diamonds 저장)
+- getItemValue type 1-5 매핑 (Counter/Timer/Diamonds/Time/Attempts)
+- 모드 7개 toggler offset 검증 정정 (Ball/UFO swap, Robot 미스라벨)
+
+**시뮬 영향 큰 거 거의 다 분석 완료**. 시뮬레이터 통합만 남음.
 
 **다음 작업 순서** (재정렬 — 4차 추출 후 깨달음 반영):
 
