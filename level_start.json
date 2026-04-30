@@ -1,0 +1,9 @@
+{
+  "player1":   {"x": 0, "y": 105},
+  "player2":   {"x": 0, "y": 0},
+  "ground_y":  0,
+  "ground_y2": 0,
+  "level_length": 0,
+  "has_start_pos": false,
+  "start_pos": {"x": 0, "y": 0}
+}
