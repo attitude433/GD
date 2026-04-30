@@ -565,6 +565,52 @@ PLAYER_PHYSICS_MAIN_FUNCS = {
                "Transform 트리거 — Move/Rotate/Scale 의 통합 처리 (base override)"),
 }
 
+# =============================================================================
+# 모드별 X-velocity / acceleration multipliers (updateMove 분석)
+# =============================================================================
+
+# 모드별 X 가속 multipliers (updateMove 0x38a0c0 line 383-403)
+MODE_X_VELOCITY_MULTIPLIERS = {
+    # Ship (0x9b9): 기본 dVar30 *= 0.7 (DAT_140622dd0)
+    "SHIP_BASE":           0.7,    # DAT_140622dd0 (line 384)
+    "SHIP_JUMP_BOOST":    -0.25,   # DAT_140623710 (line 402)
+    # UFO (0x9bb)
+    "UFO_JUMP_BOOST":     -0.28,   # DAT_140623718 (line 398)
+    # Spider (0x9be)
+    "SPIDER_JUMP_BOOST":  -0.20,   # DAT_140623708 (line 394)
+    # 공통
+    "JUMP_HOLD_BOOST":     1.35,   # DAT_140622e38 (line 390) — jump 누르고 있을 때
+    "DASH_MULTIPLIER":     4.0,    # DAT_140622e90 (line 405) — m_isDashing
+    "VELOCITY_DAMP":       0.8,    # DAT_140622de8 (line 409) — speed 감속 계수
+    "JUMP_HOLD_RATIO":     0.4,    # DAT_140622d78 (line 382) — base hold-up
+    "MAX_SPEED_RATIO":     0.95,   # DAT_140622e00 (line 118) — max speed 한계
+}
+
+# 가속/감속 thresholds
+ACCELERATION_CONSTS = {
+    "MIN_VELOCITY":        0.01,   # DAT_140622c38 — 이하면 0 으로 set
+    "TIME_50MS":           0.05,   # DAT_140622cb0 — 0.05s
+    "TIME_100MS":          0.1,    # DAT_140622cf0 — 0.1s
+    "TIME_200MS":          0.2,    # DAT_140622d18 — 0.2s
+    "TIME_500MS":          0.5,    # DAT_140622d98
+    "DIST_40":             40.0,   # DAT_140622f30
+    "DIST_80":             80.0,   # DAT_140622f70
+    "VISUAL_SMOOTH_002":   0.02,   # DAT_1406229c0 — visual 보간 (mode 별 다름)
+    "VISUAL_SMOOTH_005":   0.05,   # DAT_1406229ec
+    "VISUAL_SMOOTH_010":   0.10,   # DAT_140622a10
+    "VISUAL_SMOOTH_015":   0.15,   # DAT_140622a50
+    "VISUAL_SMOOTH_020":   0.20,   # DAT_140622a74
+}
+
+# Float ops 마스크 (XOR/AND tricks)
+FLOAT_BITWISE_MASKS = {
+    0x6243c0: ("ABS_MASK = 0x7fffffff",        "Float abs (XOR로 부호 비트 제거)"),
+    0x6243d0: ("ABS_MASK_ULL = 0xffffffff_ull", "Long ABS"),
+    0x6243e0: ("NEGATE_MASK = 0",              "0 (negate 식 첨부)"),
+    0x6243f0: ("SIGN_MASK = 0x80000000",       "Float negate (XOR)"),
+}
+
+
 UPDATE_MOVE_BRANCHES = """
 15차 — updateMove (673줄) 모드 분기 위치 매핑:
 
