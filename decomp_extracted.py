@@ -612,6 +612,49 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+SCALE_TRIGGER_FORMULA = """
+33차 — SCALE 트리거 (ID 2067) 정밀 식 (FUN_14021f4c0, 91줄):
+
+EffectGameObject 멤버 (param_2 offsets):
+- 0x740: scale_x (float, default 1.0)
+- 0x744: scale_y (float, default 1.0)
+- 0x751: divide_x (bool — true 면 1/scale_x)
+- 0x752: divide_y (bool)
+- 0x753: move_with_scale (bool)
+- 0x754: relative_to_center (bool)
+- 0x5cc: center_group_id
+- 0x5c8: target_group_id
+- 0x5bc: duration
+- 0x5e8: easing
+- 0x5ec: ease_rate
+
+식:
+  scale_x = (raw_x == 0) ? 1.0 : raw_x
+  scale_y = (raw_y == 0) ? 1.0 : raw_y
+
+  if divide_x: scale_x = 1.0 / scale_x
+  if divide_y: scale_y = 1.0 / scale_y
+
+  if relative AND center_group:
+      center_obj = group[center_group_id][0]
+      scale_x = (scale_x - 1.0) / (center.cur_x / center.base_x) + 1.0
+      scale_y = (scale_y - 1.0) / (center.cur_y / center.base_y) + 1.0
+
+  Action 등록:
+    type = 4 (SCALE action type)
+    target_group, duration, easing, scale_x/y, divide flags, etc.
+
+매 프레임 별도 함수가 처리:
+  if duration <= 0: instant scale
+  else: scale interpolation (with easing)
+
+시뮬 통합:
+- target group 의 모든 obj.scale_x/y 변경
+- relative mode = center 의 현재 scale 비례
+- divide = 역수
+"""
+
+
 TRANSFORM_TRIGGER_OVERRIDE = """
 32차 — TransformTriggerGameObject::triggerObject (0x4bc180, 1302줄) 분석:
 
