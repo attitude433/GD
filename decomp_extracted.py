@@ -612,6 +612,54 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+RANDOM_AND_COLOR_LEGACY = """
+42차 — RANDOM (case 0x778=1912) + Color Legacy (899/900/0x393) 정밀 식:
+
+★ RANDOM (case 0x778=1912):
+  LCG 식:
+    DAT_1406c2e90 = DAT_1406c2e90 * 0x343fd + 0x269ec3  # seed update
+    random_value = ((seed >> 16) & 0x7fff) / 32767  # [0, 1)
+    chance = random_value * DAT_1406232bc
+
+  분기:
+    if duration_param < chance:
+      selected_group = secondary_group (param_1[0x5cc])
+    else:
+      selected_group = primary_group (param_1[0x5c8])
+
+  spawnGroup(layer, selected_group, delay=0, ...)
+
+  의미: param_1[0x5bc] (duration 자리) = "chance threshold"
+       값이 클수록 secondary group 선택 확률 ↑
+
+★ COLOR LEGACY (case 899=0x383, 900=0x384, 0x393=915 = old "Color"):
+  모두 같은 핸들러 (caseD_1d):
+    vfunc 0x448 (PlayLayer::setColor):
+      args: this, RGB_addr (offset 0x5b9, 3 bytes),
+            duration (0x5bc), channel_kind (param_1[0x81] = 1000/1001/1002),
+            HSV_flag (uVar36 = 0x5df), opacity (param_1[0xb8]),
+            blending (offset 0x65c), copy_color_id (0x66c),
+            copy_HSV_flag (param_1[0xce]), source, player_index, control_id
+
+  channel_kind 매핑 (customSetup 에서 set):
+    899: BG channel (1000)
+    900: Ground channel (1001)
+    0x393 (915): Other (1002)
+    1d (29): 1000 + secondary 1001 (line 974, dual channel)
+    1e (30): 1001
+    0x69 (105): 1004
+    0x2e8 (744): 1003 — PULSE legacy
+
+  → 모두 1006 (PULSE) 도입 전 색상 트리거 들 (2.0 이전)
+  → 같은 vfunc 0x448 사용, channel ID 만 다름
+
+★ 디자인 단계 통합:
+- RANDOM: 음악 변동 시점에 unpredictable group spawn
+  (random drum fill 같은 효과)
+- Color Legacy: 2.0 스타일 색상 변경 (primary/secondary BG)
+"""
+
+
 ROTATE_TRIGGER_DETAILED = """
 41차 — ROTATE 트리거 (case 0x542=1346) 정밀 식 (base triggerObject):
 
