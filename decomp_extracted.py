@@ -612,6 +612,46 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+ROTATE_TRIGGER_DETAILED = """
+41차 — ROTATE 트리거 (case 0x542=1346) 정밀 식 (base triggerObject):
+
+처리 분기:
+1. Simple rotation (use_target=0, follow_player=0):
+   - call FUN_14025c9b0(layer.colorMgr) — 즉시 회전 적용
+2. Orbit/Follow rotation (use_target=1 OR follow_player=1):
+   - center_group lookup → FUN_14021efb0 (orbit calc)
+   - 두 점 사이 atan2 로 각도 계산
+
+FUN_14021efb0 (orbit/rotation calc, 106줄):
+  delta = other.position - this.position
+  if |delta| > MIN: rotation = atan2(delta.y, delta.x) * 180/pi
+  if anchor_different: 동일 패턴
+  if X/Y bounds: clamp
+
+ROTATE keys:
+- 0x5bc: duration
+- 0x5cc: target_group_id
+- 0x5e8: easing, 0x5ec: ease_rate
+- 0x5f4: lock_object_rotation
+- 0x605: follow_player_rotation
+- 0x624: center_group_id
+- 0x744: center_rotate_id
+- 0x74c: center_target_group
+- 0x628: rotation_offset
+
+★ 디자인 단계 통합:
+- 비트마다 ROTATE (group 회전)
+- 음악 빌드업 → spinning effect
+- 음악 절정 → explosive rotation (큰 각도 instant)
+
+ANIMATE_KEYFRAME (case 0xbd9=3033, FUN_140217bc0, 73줄):
+- target group 의 keyframe object (id 0xbd8) iterate
+- 각 ID 별 hash lookup
+- FUN_14025cd10 = keyframe 명령 (position/rotation/scale/time mod)
+- 디자인용: 복잡한 group 애니메이션 (보스 패턴)
+"""
+
+
 PARTICLE_AND_TEXTURE_TRIGGERS = """
 40차 — SPAWN_PARTICLE + BG/Ground/Mid Texture 트리거 정밀 식:
 
