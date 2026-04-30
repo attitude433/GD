@@ -612,6 +612,28 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+PULSE_ALPHA_CONFIRMED = """
+24차 — Pulse/Alpha 트리거 확인 (시각만, game state 무관):
+
+case 0x3ee (1006) PULSE → FUN_140260c40 (212줄)
+  - 색상 채널에 pulse action 등록
+  - pulseTime/fadeIn/fadeOut/color blend 옵션
+  - colorMgr 의 hash table 에 추가/제거
+  - 시뮬: 영향 없음 (visual only)
+
+case 0x3ef (1007) ALPHA → FUN_140260a70 (48줄)
+  - Group 의 opacity 변경
+  - 단순: clamp channel, register alpha action
+  - 시뮬: 영향 없음 (visual only)
+
+확정: Pulse/Alpha 둘 다 시뮬에 통합 불필요.
+
+남은 분석할 시각 트리거: GRADIENT, ZOOM_CAMERA, EDIT_SFX/SONG, SPAWN_PARTICLE
+- ZOOM_CAMERA 는 player 시야 변경 → 시뮬에는 무관 (player 좌표는 그대로)
+- 나머지는 모두 visual/audio
+"""
+
+
 BUMP_BOOST_NOTES = """
 23차 — bumpPlayer + boostPlayer 분석:
 
