@@ -565,6 +565,41 @@ PLAYER_PHYSICS_MAIN_FUNCS = {
                "Transform 트리거 — Move/Rotate/Scale 의 통합 처리 (base override)"),
 }
 
+UPDATE_MOVE_BRANCHES = """
+15차 — updateMove (673줄) 모드 분기 위치 매핑:
+
+각 모드 flag 가 체크되는 line 번호 (decomp 파일 기준):
+
+  Robot2 (0x9bd): L146, L295, L314, L502, L580
+  Spider (0x9be): L147, L296, L315, L393, L503
+  Ship   (0x9b9): L292, L383, L391, L497, L522, L537
+  UFO    (0x9bb): L293, L392, L501, L541
+  Ball   (0x9ba): L294, L498, L523, L538
+  Wave   (0x9bc): L499, L539
+  Swing  (0x9c4): L500, L540
+
+블록별 처리 (구획):
+- L66-145:  공통 dt 시간 계산 + dash 모드 + 시간 변형
+- L146-280: 처음 mode 분기 set (Spider/Robot2 별 처리)
+- L281-340: 가속/감속 계산 (모드별 가속 계수)
+- L341-400: 공중 모드 (Ship/UFO/Wave) 별 점프-반응
+- L401-500: jump 누르고 있을 때 가속 처리
+- L501-540: 회전/visual 보정 (각 모드 별)
+- L541-673: 최종 위치 갱신, sub-call (slopeSnap 등)
+
+가속/감속 상수 사용 (DAT 빈도):
+- DAT_1406229c0, DAT_140622a10, DAT_1406229ec — 모드별 다른 가속도
+
+자세한 모드별 식 추출은 다음 라운드 — 각 분기 ~30 줄씩 직접 읽기.
+
+시뮬 통합 우선순위:
+1. Ship/UFO (가장 많이 쓰는 비-큐브 모드) — line 383-501 추출
+2. Wave (자주 쓰임) — line 499/539 주변
+3. Robot/Spider (고급 점프) — Spider 는 별도 spiderTestJump 도 있음
+4. Ball/Swing — 마지막 우선순위
+"""
+
+
 PLAYER_UPDATE_CHAIN = """
 PlayerObject 매 프레임 업데이트 chain (디컴파일 추출):
 
