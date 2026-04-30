@@ -612,6 +612,34 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+FOLLOW_ZOOM_NOTES = """
+26차 — FOLLOW_PLAYER_Y + ZOOM_CAMERA 분석:
+
+FOLLOW_PLAYER_Y (case 0x716=1814) → FUN_14025cbf0 (40줄):
+  - Action 등록 (param_1 + 0x610 vector)
+  - type = 3 (follow_player_y), duration, speed, group, etc.
+  - clampf duration to [0, DAT_140622fe8]
+  - 이후 매 프레임 다른 함수가 처리:
+      group obj 의 Y += player.deltaY * speed * duration_factor
+
+ZOOM_CAMERA (case 0x779=1913) → FUN_140235cf0 (56줄):
+  - 카메라 zoom 변경 (param_1 + 0x1ac)
+  - clampf zoom to [DAT_140622ad0, DAT_140622f28]
+  - 모드별 dual ground 처리 호출 (현재 plyer mode 에 따라 6/0x10/0x21/5)
+  - ★ 카메라 zoom 만 변경 — player 물리 무관
+
+시뮬 영향:
+- FOLLOW_PLAYER_Y: 시뮬에 통합 가능 (group dy = player_dy * speed)
+- ZOOM_CAMERA: 무관 (skip)
+
+남은 트리거 분석 우선순위:
+1. TIMEWARP (1935) — 시간 변형, sim_dt 영향 (게임플레이 영향 大)
+2. ANIMATE_KEYFRAME (3033) — 애니메이션 (시각 + 일부 collision?)
+3. EDIT_MG (2999) — 편집 마이크로
+4. SPAWN_PARTICLE (3608) — 시각만
+"""
+
+
 PLAYER_CONTROL_FORMULA = """
 25차 — PLAYER_CONTROL 트리거 (case 0x78c=1932) 분석 (0x2174e0, 156줄):
 
