@@ -277,6 +277,30 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 **시뮬 영향 큰 거 거의 다 분석 완료**. 시뮬레이터 통합만 남음.
 
+**6차 추출 (최종 마무리, 46 commits 누적)**:
+- 모든 14개 derived class triggerObject 식별 + 분류
+- 4개 충돌 함수 라벨 정정 (collidedWithObjectInternal vs handleRotated 등)
+- TransformTriggerGameObject 의 SCALE 트리거 (2067) 식 추출
+- TouchTriggerGameObject 의 TOUCH 트리거 (1611) 식 추출
+- 1302줄 0x4bc180 분석 — base + SCALE 1개만 추가 처리
+- ItemEdit/ItemCompare 정밀 산술 식 추출 (모든 op 6개 + round/abs)
+- 모든 시각/카메라/사운드 트리거 = 시뮬 무관 확정 (skip 가능)
+
+**최종 통계**:
+- 디컴파일 함수: 199+ (시작 21, 9.5배)
+- DAT 상수: 86+ (값 추출)
+- 분석된 트리거 효과 함수: 12+ (Move/Toggle/Spawn/COLLISION/TELEPORT/PLAYER_CONTROL/FOLLOW_PLAYER_Y/TIMEWARP/ItemEdit/ItemCompare/SCALE/TOUCH)
+- 분석된 jump 함수: 5 (propellPlayer/ringJump 16 multipliers/bumpPlayer/boostPlayer/spiderTestJumpInternal)
+- 모드 토글러: 7 (검증 + offset 정정)
+- Collision fire 메커니즘 100% 추출
+
+**남은 작업 = 시뮬레이터 통합** (디컴파일 끝):
+- decomp_extracted.py 의 모든 식 → simulator.py 적용
+- 7 모드 시뮬 코드 (Ship/UFO/Wave/Ball/Robot/Spider/Swing)
+- Item 시스템 (Counter/Timer)
+- 점프 AI (BFS/A*)
+- 데이터셋 확장 → 생성 모델
+
 **다음 작업 순서** (재정렬 — 4차 추출 후 깨달음 반영):
 
 1. **`customObjectSetup` (2200줄) 의 case 0x716/0x717/0x718/0x778/0x779/0x78b-0x78f/0x812
