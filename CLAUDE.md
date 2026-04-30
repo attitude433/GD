@@ -275,7 +275,7 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - getItemValue type 1-5 매핑 (Counter/Timer/Diamonds/Time/Attempts)
 - 모드 7개 toggler offset 검증 정정 (Ball/UFO swap, Robot 미스라벨)
 
-**모든 트리거 메커니즘 100% 분석 완료** (게임플레이 + 디자인). 시뮬레이터 통합만 남음.
+**모든 트리거 메커니즘 100% 분석 완료** (게임플레이 + 디자인). + **시뮬레이터 통합 완료** (12 트리거 + greedy AI).
 
 **7차 추출 (디자인용 시각/사운드 트리거 분석, 36-43차, 55 commits 누적)**:
 - Pulse 정밀 식 (212줄) — fade_in → hold → fade_out 펄스 사이클
@@ -306,11 +306,22 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - 모드 토글러: 7 (검증 + offset 정정)
 - Collision fire 메커니즘 100% 추출
 
-**남은 작업 = 시뮬레이터 통합** (디컴파일 끝):
-- decomp_extracted.py 의 모든 식 → simulator.py 적용
-- 7 모드 시뮬 코드 (Ship/UFO/Wave/Ball/Robot/Spider/Swing)
-- Item 시스템 (Counter/Timer)
-- 점프 AI (BFS/A*)
+**시뮬레이터 통합 완료 (S1-S5, 5 commits)**:
+- S2: GRAVITY/TIMEWARP/TELEPORT/PLAYER_CONTROL 트리거 통합 ✓
+- S3: ItemEdit/ItemCompare/Counter/Timer 시스템 통합 ✓
+- S4: SCALE/ROTATE 트리거 통합 ✓
+- S5: greedy 점프 AI + 4 샘플 측정 ✓
+- 23/23 unit tests 통과
+- 12 트리거 모두 시뮬에서 처리:
+  Move/Toggle/Spawn/COLLISION (그룹) +
+  GRAVITY/TIMEWARP/TELEPORT/PLAYER_CONTROL (player) +
+  ItemEdit/ItemCompare/Pickup (counter) +
+  SCALE/ROTATE (visual+collision)
+
+**남은 작업**:
+- 7 모드 시뮬 코드 (Ship/UFO/Wave/Ball/Robot/Spider/Swing 물리 — decomp 식 있음)
+- BFS/A* 정밀 점프 AI (greedy 보다 정확)
+- TouchTrigger (1611) — 점프 입력 시 group fire
 - 데이터셋 확장 → 생성 모델
 
 **다음 작업 순서** (재정렬 — 4차 추출 후 깨달음 반영):
