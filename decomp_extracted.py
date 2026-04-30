@@ -406,6 +406,63 @@ GameObject 위치 멤버:
 
 
 # =============================================================================
+# 6차: 모드 togglers + Collision block update (어떤 게 player vs collision 인지)
+# =============================================================================
+
+# Geode binding 에서 식별된 모드 toggle 함수 주소 (player 멤버 모드 전환)
+MODE_TOGGLE_FUNCS = {
+    0x39a4f0: ("toggleFlyMode",    93,  "ship/UFO 등 비행 모드 on/off"),
+    0x39b570: ("toggleRollMode",   55,  "ball 모드"),
+    0x39b6f0: ("toggleRobotMode",  139, "robot — 큰 함수 (점프 차지 처리 등)"),
+    0x39ba70: ("toggleSpiderMode", 141, "spider — 매우 큰 (텔레포트 점프)"),
+    0x39ab20: ("toggleSwingMode",  71,  "swing"),
+}
+
+# 슬로프/회전 처리 함수
+SLOPE_AND_ROTATION_FUNCS = {
+    0x390bc0: ("updateSlopeRotation",  19,  "슬로프 위 player 회전"),
+    0x390c40: ("updateShipRotation",   59,  "ship 자세 회전"),
+}
+
+# Player 사망 + Dual Ground + Platformer time
+GAMEPLAY_MISC_FUNCS = {
+    0x397d40: ("playerDestroyed",       34, "player 사망 처리"),
+    0x213180: ("updateDualGround",      77, "dual 모드 ground 업데이트 (P1/P2 분리)"),
+    0x2185a0: ("updatePlayerCollisionBlocks", 71,
+               "매 프레임 player 위치를 virtual collision_block 으로 미러 (block_a/b 충돌 감지의 토대)"),
+    0x2396c0: ("updatePlatformerTime",  90, "플랫포머 모드 (2.2 신규) 타이머"),
+    0x226d60: ("removeFromCollisionBlocks", 78,
+               "collision_block 의 lookup table 4개에서 unregister (위치 변경 전 호출)"),
+}
+
+# Collision 트리거 발동 메커니즘 (디컴파일 분석)
+COLLISION_TRIGGER_MECHANISM = """
+실제 collision 트리거 (1815) 발동 흐름:
+
+1. Player 자체가 virtual collision_block 으로 매 프레임 미러됨:
+   updatePlayerCollisionBlocks (0x2185a0):
+   - param_1[0x1b4] (P1) → param_1[0x614] 의 collision_block
+   - param_1[0x1b5] (P2) → param_1[0x615] 의 collision_block
+   - 위치, 회전, scale 모두 복사
+   - block_a == 0 이 PLAYER 인 이유: 시뮬에선 따로 sensor 안 등록해도
+     player 자체가 sensor 역할
+
+2. removeFromCollisionBlocks (0x226d60) — 위치 변경 전 4개 lookup table 에서 빼기:
+   - +0x35e0/+0x35f8 (위치별 group)
+   - +0x3598 (block_a 인덱스)
+   - +0x35b0/+0x3658 (block_b 인덱스)
+   - +0x3600/+0x3618 (collision_block 1816 전용)
+   - +0x3670/+0x3688 (특수 flag set)
+
+3. 다음 프레임에 다시 등록 → 새 위치에서 다른 block 과 overlap 할 수 있음
+
+4. 실제 enter/exit 감지 + 트리거 fire 는:
+   updatePlayerCollisionBlocks 직후 다른 함수 (아직 미발견 — vtable 0x478 호출).
+   다음 라운드 추출 대상.
+"""
+
+
+# =============================================================================
 # 다음 라운드 추출 대상 (CLAUDE.md 다음 단계)
 # =============================================================================
 
