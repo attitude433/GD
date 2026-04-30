@@ -106,6 +106,12 @@ class TriggerInstance:
     item_tolerance: float = 0.0
     item_group_true: int = 0
     item_group_false: int = 0
+    # SCALE 트리거 (id=2067) — decomp: 0x740/0x744 = scale_x/y, 0x751/0x752 = divide flags
+    scale_x_target: float = 1.0
+    scale_y_target: float = 1.0
+    scale_divide_x: bool = False
+    scale_divide_y: bool = False
+    # ROTATE 트리거 (id=1346) — degrees field already exists, target_id 사용
     # GRAVITY 트리거 (id=2066): player.gravity_dir 설정 (decomp 검증)
     # +1=normal, -1=flipped, 0=toggle
     gravity_dir: int = 0
@@ -223,6 +229,11 @@ def _build_trigger(obj: dict, decoded: dict) -> TriggerInstance:
         item_tolerance   = float(obj.get(482, 0) or 0),
         item_group_true  = int(obj.get(51, 0) or 0),
         item_group_false = int(obj.get(71, 0) or 0),
+        # SCALE (2067): decomp gmd_keys 232/233 = scale_x/y, 234/235 = divide
+        scale_x_target = float(obj.get(232, 1.0) or 1.0),
+        scale_y_target = float(obj.get(233, 1.0) or 1.0),
+        scale_divide_x = bool(int(obj.get(234, 0) or 0)),
+        scale_divide_y = bool(int(obj.get(235, 0) or 0)),
         groups        = _parse_groups(obj.get(57)),
     )
 
@@ -582,6 +593,18 @@ def _fire_trigger(level: Level, t: TriggerInstance,
         # Pickup item (sim에선 player counter 직접 증가)
         if player is not None and t.target_id and t.item_a_id:
             player.counters[t.item_a_id] = player.counters.get(t.item_a_id, 0) + int(t.item_modifier or 1)
+    elif t.kind == "scale":
+        # SCALE 트리거 (2067) — decomp 검증:
+        # divide flag 면 scale = 1/raw_scale
+        sx = (1.0 / t.scale_x_target) if (t.scale_divide_x and t.scale_x_target != 0) else t.scale_x_target
+        sy = (1.0 / t.scale_y_target) if (t.scale_divide_y and t.scale_y_target != 0) else t.scale_y_target
+        for obj in level.groups.get(t.target_id, ()):
+            obj.scale_x = sx
+            obj.scale_y = sy
+    elif t.kind == "rotate":
+        # ROTATE 트리거 (1346) — group obj 의 rotation 변경 (degrees 더하기)
+        for obj in level.groups.get(t.target_id, ()):
+            obj.rotation = (obj.rotation + t.degrees) % 360
     elif t.kind == "collision":
         # Collision 트리거는 발동 시 target_id 그룹의 트리거들을 즉시 발동 (Spawn delay=0 과 동일).
         # 게임에선 effect_func 가 직접 그룹 트리거 발동하지만, 시뮬에선 PendingSpawn 으로 통일.
@@ -1444,6 +1467,32 @@ def _test_teleport_trigger():
     print(f"[OK] teleport trigger: instant move to (500, 200)")
 
 
+def _test_scale_rotate():
+    """SCALE + ROTATE 트리거 — group obj 의 scale/rotation 변경."""
+    obj1 = SimObject(obj_id=1, x=100, y=15, rotation=0, w=30, h=30, type=0,
+                     groups=(50,))
+    obj2 = SimObject(obj_id=8, x=200, y=15, rotation=0, w=30, h=30, type=2,
+                     groups=(50,))
+    sc_trig = TriggerInstance(obj_id=2067, kind="scale", x=10, y=10,
+                              target_id=50, scale_x_target=2.0, scale_y_target=0.5)
+    rot_trig = TriggerInstance(obj_id=1346, kind="rotate", x=10, y=10,
+                               target_id=50, degrees=90.0)
+    level = Level(name="t",
+                  objects=[obj1, obj2],
+                  triggers=[sc_trig, rot_trig],
+                  groups={50: [obj1, obj2]},
+                  _xs=[100, 200], _trigger_xs=[10, 10])
+    p = Player(x=0, y=105)
+    _fire_trigger(level, sc_trig, [], [], player=p)
+    assert obj1.scale_x == 2.0 and obj1.scale_y == 0.5, \
+        f"scale 기대 (2.0, 0.5): ({obj1.scale_x}, {obj1.scale_y})"
+    assert obj2.scale_x == 2.0 and obj2.scale_y == 0.5
+    _fire_trigger(level, rot_trig, [], [], player=p)
+    assert obj1.rotation == 90 and obj2.rotation == 90, \
+        f"rotation 기대 90: {obj1.rotation}, {obj2.rotation}"
+    print(f"[OK] scale+rotate triggers: group obj 변경 검증")
+
+
 def _test_item_compare():
     """ItemCompare: counter[1] >= 5 면 group 99 fire."""
     objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
@@ -1492,3 +1541,4 @@ if __name__ == "__main__":
     _test_timewarp_trigger()
     _test_teleport_trigger()
     _test_item_compare()
+    _test_scale_rotate()
