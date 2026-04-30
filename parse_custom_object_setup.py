@@ -81,7 +81,7 @@ def parse() -> dict:
             store_member = None
             store_type = None
 
-            # 블록 내부 (KEY 체크 } 까지 또는 다음 닫는 } 까지)
+            # 블록 내부 (KEY 체크 } 까지) 에서 VAL_PTR, PARSER 추출
             block_end = min(i + 12, end)
             for j in range(i, block_end):
                 if value_off is None:
@@ -93,9 +93,15 @@ def parse() -> dict:
                     if mp:
                         parser = mp.group(1)
 
-            # 블록 직후 (~5 줄) 에 MEMBER_STORE
-            after_end = min(block_end + 6, end)
-            for j in range(block_end, after_end):
+            # MEMBER_STORE — KEY_CHECK 이후 ~18 줄 내, 다음 KEY_CHECK 전까지.
+            # store는 if 블록 안 (직접) 또는 직후 (CONCAT44 패턴) 에 모두 올 수 있음.
+            search_end = min(i + 18, end)
+            # 다음 KEY_CHECK 라인을 만나면 거기서 끊음
+            for j in range(i + 1, search_end):
+                if KEY_CHECK.search(lines[j]):
+                    search_end = j
+                    break
+            for j in range(i + 1, search_end):
                 ms = MEMBER_STORE.search(lines[j])
                 if ms:
                     store_type = ms.group(1).strip()
@@ -121,22 +127,41 @@ def parse() -> dict:
     }
 
 
+# case ID (object ID) → gmdkit trigger 이름 (id_dictionary_merged.json 에서 cross-ref 결과)
+CASE_LABELS = {
+    -1: "TOP-LEVEL (모든 EffectGameObject 공통)",
+    0x69:  "ID 105 — GRADIENT/STATIC trigger (35 reads, 가장 큰 case)",
+    0x716: "ID 1814 — FOLLOW_PLAYER_Y trigger",
+    0x717: "ID 1815 — COLLISION trigger ★",
+    0x718: "ID 1816 — COLLISION_BLOCK trigger ★",
+    0x778: "ID 1912 — RANDOM trigger",
+    0x779: "ID 1913 — ZOOM_CAMERA trigger ★",
+    0x78b: "ID 1931 — (unknown, 2.2 신규)",
+    0x78c: "ID 1932 — PLAYER_CONTROL trigger",
+    0x78d: "ID 1933 — SWING portal",
+    0x78f: "ID 1935 — TIMEWARP trigger",
+    0x812: "ID 2066 — GRAVITY trigger ★",
+}
+
+
 def summary(data: dict) -> str:
     lines = [f"# {data['source']}"]
     lines.append(f"# Total cases: {data['total_cases']}")
+    lines.append(f"# 핵심 패턴: gmd_key_code = key_offset / 8 (검증: COLLISION 1815 의 0x280/8=80=block_a)")
     lines.append("")
     for cid_str, entries in data["extracted"].items():
         cid = int(cid_str)
-        label = f"top-level (no case)" if cid == -1 else f"case 0x{cid:x} ({cid})"
+        label = CASE_LABELS.get(cid, f"case 0x{cid:x} ({cid})")
         lines.append(f"## {label} — {len(entries)} key reads")
         for e in entries:
             mem = e["member_offset"] or "?"
             typ = (e["store_type"] or "?")[:14]
             parser = e["parser"] or "?"
+            koff = int(e["key_offset"], 16)
+            gmd_key = koff // 8  # 검증된 매핑
             lines.append(
-                f"  L{e['line']:4d}  param_3+{e['key_offset']:>6} -> "
-                f"param_2+{(e['value_offset'] or '?'):>6}  {parser:>4}  "
-                f"-> param_1+{mem:>6}  ({typ})"
+                f"  L{e['line']:4d}  param_3+{e['key_offset']:>6} (gmd_key={gmd_key:>3})  "
+                f"{parser:>4}  -> param_1+{mem:>6} ({typ})"
             )
         lines.append("")
     return "\n".join(lines)

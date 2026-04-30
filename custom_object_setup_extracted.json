@@ -27,7 +27,7 @@
         "key_offset": "0x58",
         "value_offset": "0x160",
         "parser": "atoi",
-        "member_offset": "0x5d2",
+        "member_offset": "0x5d0",
         "store_type": "bool"
       },
       {
@@ -35,7 +35,7 @@
         "key_offset": "0x1f0",
         "value_offset": "0x7c0",
         "parser": "atoi",
-        "member_offset": "0x690",
+        "member_offset": "0x5d1",
         "store_type": "bool"
       },
       {
@@ -43,7 +43,7 @@
         "key_offset": "0x8e0",
         "value_offset": "0x2380",
         "parser": "atoi",
-        "member_offset": "0x6f8",
+        "member_offset": "0x6dc",
         "store_type": "bool"
       },
       {
@@ -51,7 +51,7 @@
         "key_offset": "0x398",
         "value_offset": "0xe60",
         "parser": "atoi",
-        "member_offset": "0x700",
+        "member_offset": "0x6fc",
         "store_type": "int"
       },
       {
@@ -59,15 +59,15 @@
         "key_offset": "0x3a8",
         "value_offset": "0xea0",
         "parser": "atoi",
-        "member_offset": "0x698",
-        "store_type": "int"
+        "member_offset": "0x704",
+        "store_type": "bool"
       },
       {
         "line": 146,
         "key_offset": "0x8c0",
         "value_offset": "0x2300",
         "parser": "atoi",
-        "member_offset": "0x739",
+        "member_offset": "0x738",
         "store_type": "bool"
       },
       {
@@ -75,15 +75,15 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x6a7",
-        "store_type": "bool"
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 184,
         "key_offset": "0xbe8",
         "value_offset": "0x2fa0",
         "parser": "atoi",
-        "member_offset": "0x6a9",
+        "member_offset": "0x6a8",
         "store_type": "bool"
       },
       {
@@ -91,7 +91,7 @@
         "key_offset": "0xbf8",
         "value_offset": "0x2fe0",
         "parser": "atoi",
-        "member_offset": "0x6ac",
+        "member_offset": "0x6b0",
         "store_type": "int"
       },
       {
@@ -99,23 +99,23 @@
         "key_offset": "0xe78",
         "value_offset": "0x39e0",
         "parser": "atoi",
-        "member_offset": "0x6a8",
-        "store_type": "undefined1"
+        "member_offset": "0x6b4",
+        "store_type": "bool"
       },
       {
         "line": 241,
         "key_offset": "0x280",
         "value_offset": "0xa00",
         "parser": "atoi",
-        "member_offset": "0x675",
-        "store_type": "bool"
+        "member_offset": "0x6a0",
+        "store_type": "int"
       },
       {
         "line": 267,
         "key_offset": "0x280",
         "value_offset": "0xa00",
         "parser": "atoi",
-        "member_offset": "0x694",
+        "member_offset": "0x6a0",
         "store_type": "int"
       },
       {
@@ -123,7 +123,7 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x5cc",
+        "member_offset": "0x5c8",
         "store_type": "int"
       },
       {
@@ -131,7 +131,7 @@
         "key_offset": "0x1c0",
         "value_offset": "0x700",
         "parser": "atoi",
-        "member_offset": "0x6a4",
+        "member_offset": "0x675",
         "store_type": "bool"
       },
       {
@@ -139,7 +139,7 @@
         "key_offset": "0x640",
         "value_offset": "0x1900",
         "parser": "atoi",
-        "member_offset": "0x6a6",
+        "member_offset": "0x6a5",
         "store_type": "bool"
       },
       {
@@ -147,7 +147,7 @@
         "key_offset": "0x50",
         "value_offset": "0x140",
         "parser": "atof",
-        "member_offset": "0x5ec",
+        "member_offset": "0x5bc",
         "store_type": "float"
       },
       {
@@ -155,7 +155,7 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x5cc",
+        "member_offset": "0x5c8",
         "store_type": "int"
       },
       {
@@ -163,7 +163,7 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x5cc",
+        "member_offset": "0x5c8",
         "store_type": "int"
       },
       {
@@ -171,8 +171,8 @@
         "key_offset": "0x480",
         "value_offset": "0x1200",
         "parser": "atof",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x600",
+        "store_type": "float"
       },
       {
         "line": 541,
@@ -187,7 +187,7 @@
         "key_offset": "0x1d0",
         "value_offset": "0x740",
         "parser": "atoi",
-        "member_offset": "0x5f1",
+        "member_offset": "0x5f0",
         "store_type": "bool"
       }
     ],
@@ -197,7 +197,7 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x710",
+        "member_offset": "0x5c8",
         "store_type": "int"
       },
       {
@@ -205,16 +205,16 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 1253,
         "key_offset": "0x118",
         "value_offset": "0x460",
         "parser": "atof",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5c0",
+        "store_type": "float"
       },
       {
         "line": 1297,
@@ -229,15 +229,15 @@
         "key_offset": "0xf0",
         "value_offset": "0x3c0",
         "parser": "atoi",
-        "member_offset": "0x5f0",
-        "store_type": "bool"
+        "member_offset": "0x5e8",
+        "store_type": "int"
       },
       {
         "line": 1358,
         "key_offset": "0x1d8",
         "value_offset": "0x760",
         "parser": "atoi",
-        "member_offset": "0x5f2",
+        "member_offset": "0x5f1",
         "store_type": "bool"
       },
       {
@@ -245,7 +245,7 @@
         "key_offset": "0x470",
         "value_offset": "0x11c0",
         "parser": "atoi",
-        "member_offset": "0x604",
+        "member_offset": "0x5f3",
         "store_type": "bool"
       },
       {
@@ -253,7 +253,7 @@
         "key_offset": "0xc50",
         "value_offset": "0x3140",
         "parser": "atoi",
-        "member_offset": "0x5f4",
+        "member_offset": "0x605",
         "store_type": "bool"
       },
       {
@@ -261,7 +261,7 @@
         "key_offset": "0x238",
         "value_offset": "0x8e0",
         "parser": "atoi",
-        "member_offset": "0x5f8",
+        "member_offset": "0x5cc",
         "store_type": "int"
       },
       {
@@ -269,15 +269,15 @@
         "key_offset": "0xc58",
         "value_offset": "0x3160",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x608",
+        "store_type": "int"
       },
       {
         "line": 1453,
         "key_offset": "0xc68",
         "value_offset": "0x31a0",
         "parser": "atoi",
-        "member_offset": "0x611",
+        "member_offset": "0x610",
         "store_type": "bool"
       },
       {
@@ -285,7 +285,7 @@
         "key_offset": "0x450",
         "value_offset": "0x1140",
         "parser": "atoi",
-        "member_offset": "0x6a5",
+        "member_offset": "0x6a4",
         "store_type": "bool"
       },
       {
@@ -301,31 +301,31 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 1573,
         "key_offset": "0x180",
         "value_offset": "0x600",
         "parser": "atoi",
-        "member_offset": "0x671",
-        "store_type": "bool"
+        "member_offset": "0x654",
+        "store_type": "int"
       },
       {
         "line": 1591,
         "key_offset": "0x210",
         "value_offset": "0x840",
         "parser": "atoi",
-        "member_offset": "0x658",
-        "store_type": "int"
+        "member_offset": "0x672",
+        "store_type": "bool"
       },
       {
         "line": 1609,
         "key_offset": "0x2b0",
         "value_offset": "0xac0",
         "parser": "atoi",
-        "member_offset": "0x674",
+        "member_offset": "0x673",
         "store_type": "bool"
       },
       {
@@ -341,8 +341,8 @@
         "key_offset": "0x48",
         "value_offset": "0x120",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5b9",
+        "store_type": "undefined1"
       },
       {
         "line": 1702,
@@ -357,7 +357,7 @@
         "key_offset": "0x78",
         "value_offset": "0x1e0",
         "parser": "atoi",
-        "member_offset": "0x5de",
+        "member_offset": "0x5dd",
         "store_type": "bool"
       },
       {
@@ -365,7 +365,7 @@
         "key_offset": "0x88",
         "value_offset": "0x220",
         "parser": "atoi",
-        "member_offset": "0x670",
+        "member_offset": "0x5df",
         "store_type": "bool"
       },
       {
@@ -373,8 +373,8 @@
         "key_offset": "0xb8",
         "value_offset": "0x2e0",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x408",
+        "store_type": "int"
       },
       {
         "line": 1817,
@@ -389,15 +389,15 @@
         "key_offset": "0x690",
         "value_offset": "0x1a40",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x674",
+        "store_type": "bool"
       },
       {
         "line": 1895,
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x5cc",
+        "member_offset": "0x5c8",
         "store_type": "int"
       },
       {
@@ -405,23 +405,23 @@
         "key_offset": "0xf0",
         "value_offset": "0x3c0",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5e8",
+        "store_type": "int"
       },
       {
         "line": 1970,
         "key_offset": "0x228",
         "value_offset": "0x8a0",
         "parser": "atoi",
-        "member_offset": "0x620",
-        "store_type": "bool"
+        "member_offset": "0x61c",
+        "store_type": "int"
       },
       {
         "line": 1988,
         "key_offset": "0x450",
         "value_offset": "0x1140",
         "parser": "atoi",
-        "member_offset": "0x6a5",
+        "member_offset": "0x6a4",
         "store_type": "bool"
       },
       {
@@ -429,7 +429,7 @@
         "key_offset": "0xc50",
         "value_offset": "0x3140",
         "parser": "atoi",
-        "member_offset": "0x610",
+        "member_offset": "0x605",
         "store_type": "bool"
       },
       {
@@ -437,8 +437,8 @@
         "key_offset": "0xc88",
         "value_offset": "0x3220",
         "parser": "atoi",
-        "member_offset": "0x628",
-        "store_type": "float"
+        "member_offset": "0x624",
+        "store_type": "int"
       },
       {
         "line": 2064,
@@ -453,15 +453,15 @@
         "key_offset": "0x248",
         "value_offset": "0x920",
         "parser": "atof",
-        "member_offset": "0x630",
-        "store_type": "float"
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 2126,
         "key_offset": "0x378",
         "value_offset": "0xde0",
         "parser": "atoi",
-        "member_offset": "0x6e5",
+        "member_offset": "0x6e4",
         "store_type": "bool"
       },
       {
@@ -469,8 +469,8 @@
         "key_offset": "0x390",
         "value_offset": "0xe40",
         "parser": "atof",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x6ec",
+        "store_type": "float"
       }
     ],
     "1814": [
@@ -487,8 +487,8 @@
         "key_offset": "0x2e0",
         "value_offset": "0xb80",
         "parser": "atoi",
-        "member_offset": "0x644",
-        "store_type": "float"
+        "member_offset": "0x640",
+        "store_type": "int"
       }
     ],
     "1815": [
@@ -497,7 +497,7 @@
         "key_offset": "0x280",
         "value_offset": "0xa00",
         "parser": "atoi",
-        "member_offset": "0x694",
+        "member_offset": "0x6a0",
         "store_type": "int"
       },
       {
@@ -505,15 +505,15 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 702,
         "key_offset": "0x2e8",
         "value_offset": "0xba0",
         "parser": "atoi",
-        "member_offset": "0x675",
+        "member_offset": "0x693",
         "store_type": "bool"
       },
       {
@@ -521,7 +521,7 @@
         "key_offset": "0x450",
         "value_offset": "0x1140",
         "parser": "atoi",
-        "member_offset": "0x6a5",
+        "member_offset": "0x6a4",
         "store_type": "bool"
       }
     ],
@@ -531,8 +531,8 @@
         "key_offset": "0x280",
         "value_offset": "0xa00",
         "parser": "atoi",
-        "member_offset": "0x69d",
-        "store_type": "bool"
+        "member_offset": "0x6a0",
+        "store_type": "int"
       }
     ],
     "1912": [
@@ -541,7 +541,7 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x5cc",
+        "member_offset": "0x5c8",
         "store_type": "int"
       }
     ],
@@ -559,8 +559,8 @@
         "key_offset": "0xf0",
         "value_offset": "0x3c0",
         "parser": "atoi",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5e8",
+        "store_type": "int"
       }
     ],
     "1931": [
@@ -569,8 +569,8 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x6f1",
-        "store_type": "bool"
+        "member_offset": "0x5c8",
+        "store_type": "int"
       }
     ],
     "1932": [
@@ -579,7 +579,7 @@
         "key_offset": "0x450",
         "value_offset": "0x1140",
         "parser": "atoi",
-        "member_offset": "0x6a5",
+        "member_offset": "0x6a4",
         "store_type": "bool"
       },
       {
@@ -587,7 +587,7 @@
         "key_offset": "0x1d0",
         "value_offset": "0x740",
         "parser": "atoi",
-        "member_offset": "0x5f1",
+        "member_offset": "0x5f0",
         "store_type": "bool"
       }
     ],
@@ -597,7 +597,7 @@
         "key_offset": "0x450",
         "value_offset": "0x1140",
         "parser": "atoi",
-        "member_offset": "0x6a5",
+        "member_offset": "0x6a4",
         "store_type": "bool"
       },
       {
@@ -605,7 +605,7 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x684",
+        "member_offset": "0x5c8",
         "store_type": "int"
       },
       {
@@ -613,40 +613,40 @@
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x675",
-        "store_type": "bool"
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 1072,
         "key_offset": "0x288",
         "value_offset": "0xa20",
         "parser": "atoi",
-        "member_offset": "0x678",
-        "store_type": "int"
+        "member_offset": "0x676",
+        "store_type": "bool"
       },
       {
         "line": 1089,
         "key_offset": "0x630",
         "value_offset": "0x18c0",
         "parser": "atoi",
-        "member_offset": "0x680",
-        "store_type": "bool"
+        "member_offset": "0x67c",
+        "store_type": "int"
       },
       {
         "line": 1112,
         "key_offset": "0x198",
         "value_offset": "0x660",
         "parser": "atoi",
-        "member_offset": "0x675",
-        "store_type": "bool"
+        "member_offset": "0x5c8",
+        "store_type": "int"
       },
       {
         "line": 1164,
         "key_offset": "0x2a0",
         "value_offset": "0xa80",
         "parser": "atof",
-        "member_offset": null,
-        "store_type": null
+        "member_offset": "0x5d8",
+        "store_type": "float"
       }
     ]
   }
