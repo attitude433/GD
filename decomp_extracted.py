@@ -612,6 +612,44 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+PLAYER_CONTROL_FORMULA = """
+25차 — PLAYER_CONTROL 트리거 (case 0x78c=1932) 분석 (0x2174e0, 156줄):
+
+EffectGameObject (param_2) 의 flag 들 (검증된 멤버 offsets):
+- 0x740: stop_jump        — 점프 입력 차단
+- 0x741: stop_left_right  — 좌우 입력 차단
+- 0x742: stop_rotation    — 회전 정지
+- 0x743: stop_slide       — slide 정지
+- 0x6a4: target_p1
+- 0x6a5: target_p2
+
+각 flag 효과 (player 멤버 변경):
+stop_jump (0x740):
+  player[0x985] = 0  (m_jumpPressed clear)
+  player[0x99c] = 1  (?? jump-blocked flag)
+  if player[0x9e4]: savePositionState (FUN_140396650)
+
+stop_left_right (0x741):
+  player[0xb01] = 0  (m_leftPressed clear)
+  player[0xb00] = 0  (m_rightPressed clear)
+  player[0xb58] = 0  (방향 입력 history clear)
+
+stop_rotation (0x742):
+  player[0x728] = 0  (rotation timer)
+  player[0x668] = 0
+  player[0x720] = 0
+
+stop_slide (0x743):
+  player[0x952] = 0
+  player[0xb94] = 0
+
+시뮬 통합:
+- 우리 sim 의 player.jump 입력 → stop_jump 발동 시 그 프레임부터 입력 무시
+- 우리 sim 은 left/right 미사용 (auto-walk) → 그 부분 skip 가능
+- 가장 중요: stop_jump 가 player AI 의 점프 시퀀스에 영향
+"""
+
+
 PULSE_ALPHA_CONFIRMED = """
 24차 — Pulse/Alpha 트리거 확인 (시각만, game state 무관):
 
