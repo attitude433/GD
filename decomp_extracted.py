@@ -612,6 +612,59 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+GRADIENT_TRIGGER_DETAILED = """
+37차 — GRADIENT 트리거 (case 0xb57=2903) 정밀 식 (FUN_14021f750, 207줄):
+
+GJGradientLayer 구조 (CCLayerGradient 상속):
+- gradient_dict = layer + 0x3168 (CCDictionary, key=gradient_id)
+- 각 entry = GJGradientLayer instance:
+  +0x238: color_group_a (2 색상 ID 중 하나)
+  +0x23c: color_group_b
+  +0x254: blend_mode (1/2/3)
+  +0x250: smooth_edge flag
+  +0x258: layer_parent_id (어디에 그릴지)
+  +0x248: source_trigger_obj (param_2)
+  +0x25c: gradient_id
+
+처리:
+1. gradient_id = clamp(param_2[0x748], 0, 999)
+2. dict[gradient_id] 찾기 — 없으면 새 GJGradientLayer 생성
+
+3. Disable flag (param_2[0x75d]):
+   - true: layer 제거 + clear
+
+4. Color groups (param_2[0x450/0x458]):
+   - 두 개의 vector<int> (group_id 들)
+   - color_group_a/b 에 각각 첫 번째 group_id 저장
+
+5. Blend mode (param_2[0x744]):
+   case 1: BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)  # additive transparent
+   case 2: BlendFunc(GL_ONE, GL_ONE)                   # full additive
+   case 3: BlendFunc(GL_ZERO, GL_SRC_COLOR)            # multiply darken
+   else:   default normal alpha
+
+6. Layer parent (param_2[0x740]) — 15가지 z layer:
+   1: 정적 ground (special case)
+   2: 백그라운드
+   3-12: 게임 layer 들 (z_order 별)
+   13: middle (special case)
+   14: 메인 player layer
+   15: 가장 앞 (special case)
+
+7. Z-order (param_2[0x470] 또는 [0x420]):
+   - clampf to [-5, +5]
+   - layer 마다 base offset (1=-54, 2=-14, 13=46, 14=56)
+
+8. Add child to parent layer with z order
+
+★ 디자인 단계 통합:
+- 음악 섹션 시작 시 → GRADIENT (color a, b, blend_mode, layer 12)
+- 비트 강조 시 → 짧은 블렌드 모드 변환 (additive 펄스)
+- 음악 chord change → 색상 그룹 ID 변경
+- 그라데이션 ID 별로 다른 시각 효과 영역 분리
+"""
+
+
 PULSE_TRIGGER_DETAILED = """
 36차 — Pulse 트리거 (case 0x3ee=1006) 정밀 식 (FUN_140260c40, 212줄):
 
