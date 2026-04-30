@@ -612,6 +612,61 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+RING_JUMP_MULTIPLIERS = {
+    # Ring/orb type 별 jump force multiplier (decomp 검증, ringJump 0x398c00)
+    # 형식: (DAT_offset, value, ring_type, mode/조건, 의미)
+    # type 0x0c (12) = mode-aware multi-ring:
+    (0x622ac4, 0.37): "ring 0x0c Ship multiplier",
+    (0x622ad4, 0.42): "ring 0x0c UFO multiplier",
+    (0x622b94, 0.77): "ring 0x0c Ball multiplier",
+    (0x622b80, 0.72): "ring 0x0c default (cube?) multiplier",
+
+    # type 0x1d (29) = Ship-only ring:
+    (0x622b74, 0.70): "ring 0x1d Ship multiplier",
+
+    # type 0x23 (35) = COMPLEX ring (5 sub-cases):
+    (0x622cd4, 1.38): "ring 0x23 default + Spider multiplier",
+    (0x622cc4, 1.34): "ring 0x23 Ball multiplier",
+    (0x622c9c, 1.28): "ring 0x23 Robot multiplier",
+    (0x622c2c, 1.02): "ring 0x23 UFO (speedMod==1) multiplier",
+    (0x622cd0, 1.36): "ring 0x23 UFO (speedMod!=1) multiplier",
+    (0x622cd8, 1.40): "ring 0x23 Ship (speedMod!=1) multiplier",
+
+    # type 0x20 (32) = X-VELOCITY ring:
+    (0x623864, -14.0): "ring 0x20 flying-mode initial Y velocity",
+    (0x623880, -15.0): "ring 0x20 default initial Y velocity",
+    (0x622c54,  1.10): "ring 0x20 Spider/Robot Y multiplier",
+
+    # 기타:
+    (0x622bd8, 0.90): "Robot default ring multiplier",
+    (0x6229f4, 0.06): "Spider visual scale",
+}
+
+# Ring jump 정밀 식 (의미 정리 후 시뮬에서 사용 가능)
+RING_JUMP_FORMULA = """
+ringJump (0x398c00) — orb/ring 충돌 시 호출:
+
+step 1. ring type 식별 (object.vfunc 0x660 = getObjectType)
+step 2. type 별 multiplier 결정:
+   type 0x0c: Ship 0.37, UFO 0.42, Ball 0.77, default 0.72
+   type 0x1d: Ship 0.70
+   type 0x23: Spider 1.38 (default), Ball 1.34, Robot 1.28,
+              UFO speedMod==1: 1.02, speedMod!=1: 1.36, Ship !=1: 1.40
+   type 0x20: 초기 Y -14 (flying) 또는 -15 (default), Spider/Robot ×1.1
+   default Robot: 0.90
+
+step 3. 공통 처리:
+   sign = isUpsideDown ? -1 : +1
+   speed_factor = (speedMod != 1.0) ? 0.8 : 1.0
+   setPositionY(player, sign * multiplier * speed_factor)
+
+step 4. Air mode (Ball, Spider, Swing) 보정:
+   player.m_yVelocity *= 0.6 (DAT_140622db0)
+
+이로써 모든 ring/orb 의 정확한 점프 높이 계산 가능.
+"""
+
+
 RING_JUMP_STRUCTURE = """
 21차 — ringJump (0x398c00, 628줄) 구조 분석:
 
