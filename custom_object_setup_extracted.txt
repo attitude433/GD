@@ -1,0 +1,98 @@
+# D:\GhidraProjects\decomp\EffectGameObject_customObjectSetup__0x4a8ad0.c
+# Total cases: 17
+
+## top-level (no case) — 21 key reads
+  L  55  param_3+  0x58 -> param_2+ 0x160  atoi  -> param_1+ 0x5d2  (bool)
+  L  74  param_3+ 0x1f0 -> param_2+ 0x7c0  atoi  -> param_1+ 0x690  (bool)
+  L  92  param_3+ 0x8e0 -> param_2+0x2380  atoi  -> param_1+ 0x6f8  (bool)
+  L 110  param_3+ 0x398 -> param_2+ 0xe60  atoi  -> param_1+ 0x700  (int)
+  L 128  param_3+ 0x3a8 -> param_2+ 0xea0  atoi  -> param_1+ 0x698  (int)
+  L 146  param_3+ 0x8c0 -> param_2+0x2300  atoi  -> param_1+ 0x739  (bool)
+  L 166  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x6a7  (bool)
+  L 184  param_3+ 0xbe8 -> param_2+0x2fa0  atoi  -> param_1+ 0x6a9  (bool)
+  L 201  param_3+ 0xbf8 -> param_2+0x2fe0  atoi  -> param_1+ 0x6ac  (int)
+  L 219  param_3+ 0xe78 -> param_2+0x39e0  atoi  -> param_1+ 0x6a8  (undefined1)
+  L 241  param_3+ 0x280 -> param_2+ 0xa00  atoi  -> param_1+ 0x675  (bool)
+  L 267  param_3+ 0x280 -> param_2+ 0xa00  atoi  -> param_1+ 0x694  (int)
+  L 285  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x5cc  (int)
+  L 303  param_3+ 0x1c0 -> param_2+ 0x700  atoi  -> param_1+ 0x6a4  (bool)
+  L 320  param_3+ 0x640 -> param_2+0x1900  atoi  -> param_1+ 0x6a6  (bool)
+  L 387  param_3+  0x50 -> param_2+ 0x140  atof  -> param_1+ 0x5ec  (float)
+  L 414  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x5cc  (int)
+  L 460  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x5cc  (int)
+  L 511  param_3+ 0x480 -> param_2+0x1200  atof  -> param_1+     ?  (?)
+  L 541  param_3+  0xe8 -> param_2+ 0x3a0  atof  -> param_1+     ?  (?)
+  L 556  param_3+ 0x1d0 -> param_2+ 0x740  atoi  -> param_1+ 0x5f1  (bool)
+
+## case 0x69 (105) — 35 key reads
+  L1197  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x710  (int)
+  L1231  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+     ?  (?)
+  L1253  param_3+ 0x118 -> param_2+ 0x460  atof  -> param_1+     ?  (?)
+  L1297  param_3+  0xe8 -> param_2+ 0x3a0  atof  -> param_1+     ?  (?)
+  L1339  param_3+  0xf0 -> param_2+ 0x3c0  atoi  -> param_1+ 0x5f0  (bool)
+  L1358  param_3+ 0x1d8 -> param_2+ 0x760  atoi  -> param_1+ 0x5f2  (bool)
+  L1376  param_3+ 0x470 -> param_2+0x11c0  atoi  -> param_1+ 0x604  (bool)
+  L1394  param_3+ 0xc50 -> param_2+0x3140  atoi  -> param_1+ 0x5f4  (bool)
+  L1412  param_3+ 0x238 -> param_2+ 0x8e0  atoi  -> param_1+ 0x5f8  (int)
+  L1430  param_3+ 0xc58 -> param_2+0x3160  atoi  -> param_1+     ?  (?)
+  L1453  param_3+ 0xc68 -> param_2+0x31a0  atoi  -> param_1+ 0x611  (bool)
+  L1471  param_3+ 0x450 -> param_2+0x1140  atoi  -> param_1+ 0x6a5  (bool)
+  L1507  param_3+ 0x480 -> param_2+0x1200  atof  -> param_1+     ?  (?)
+  L1523  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+     ?  (?)
+  L1573  param_3+ 0x180 -> param_2+ 0x600  atoi  -> param_1+ 0x671  (bool)
+  L1591  param_3+ 0x210 -> param_2+ 0x840  atoi  -> param_1+ 0x658  (int)
+  L1609  param_3+ 0x2b0 -> param_2+ 0xac0  atoi  -> param_1+ 0x674  (bool)
+  L1627  param_3+  0x38 -> param_2+  0xe0  atoi  -> param_1+     ?  (?)
+  L1645  param_3+  0x48 -> param_2+ 0x120  atoi  -> param_1+     ?  (?)
+  L1702  param_3+  0x38 -> param_2+  0xe0  atoi  -> param_1+     ?  (?)
+  L1763  param_3+  0x78 -> param_2+ 0x1e0  atoi  -> param_1+ 0x5de  (bool)
+  L1781  param_3+  0x88 -> param_2+ 0x220  atoi  -> param_1+ 0x670  (bool)
+  L1798  param_3+  0xb8 -> param_2+ 0x2e0  atoi  -> param_1+     ?  (?)
+  L1817  param_3+ 0x118 -> param_2+ 0x460  atof  -> param_1+ 0x5c0  (float)
+  L1874  param_3+ 0x690 -> param_2+0x1a40  atoi  -> param_1+     ?  (?)
+  L1895  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x5cc  (int)
+  L1929  param_3+  0xf0 -> param_2+ 0x3c0  atoi  -> param_1+     ?  (?)
+  L1970  param_3+ 0x228 -> param_2+ 0x8a0  atoi  -> param_1+ 0x620  (bool)
+  L1988  param_3+ 0x450 -> param_2+0x1140  atoi  -> param_1+ 0x6a5  (bool)
+  L2015  param_3+ 0xc50 -> param_2+0x3140  atoi  -> param_1+ 0x610  (bool)
+  L2032  param_3+ 0xc88 -> param_2+0x3220  atoi  -> param_1+ 0x628  (float)
+  L2064  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+     ?  (?)
+  L2106  param_3+ 0x248 -> param_2+ 0x920  atof  -> param_1+ 0x630  (float)
+  L2126  param_3+ 0x378 -> param_2+ 0xde0  atoi  -> param_1+ 0x6e5  (bool)
+  L2158  param_3+ 0x390 -> param_2+ 0xe40  atof  -> param_1+     ?  (?)
+
+## case 0x716 (1814) — 2 key reads
+  L 588  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+     ?  (?)
+  L 638  param_3+ 0x2e0 -> param_2+ 0xb80  atoi  -> param_1+ 0x644  (float)
+
+## case 0x717 (1815) — 4 key reads
+  L 661  param_3+ 0x280 -> param_2+ 0xa00  atoi  -> param_1+ 0x694  (int)
+  L 679  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+     ?  (?)
+  L 702  param_3+ 0x2e8 -> param_2+ 0xba0  atoi  -> param_1+ 0x675  (bool)
+  L 720  param_3+ 0x450 -> param_2+0x1140  atoi  -> param_1+ 0x6a5  (bool)
+
+## case 0x718 (1816) — 1 key reads
+  L 749  param_3+ 0x280 -> param_2+ 0xa00  atoi  -> param_1+ 0x69d  (bool)
+
+## case 0x778 (1912) — 1 key reads
+  L 771  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x5cc  (int)
+
+## case 0x779 (1913) — 2 key reads
+  L 818  param_3+ 0x368 -> param_2+ 0xda0  atoi  -> param_1+ 0x6e0  (float)
+  L 848  param_3+  0xf0 -> param_2+ 0x3c0  atoi  -> param_1+     ?  (?)
+
+## case 0x78b (1931) — 1 key reads
+  L 873  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x6f1  (bool)
+
+## case 0x78c (1932) — 2 key reads
+  L 903  param_3+ 0x450 -> param_2+0x1140  atoi  -> param_1+ 0x6a5  (bool)
+  L 920  param_3+ 0x1d0 -> param_2+ 0x740  atoi  -> param_1+ 0x5f1  (bool)
+
+## case 0x812 (2066) — 7 key reads
+  L1001  param_3+ 0x450 -> param_2+0x1140  atoi  -> param_1+ 0x6a5  (bool)
+  L1033  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x684  (int)
+  L1055  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x675  (bool)
+  L1072  param_3+ 0x288 -> param_2+ 0xa20  atoi  -> param_1+ 0x678  (int)
+  L1089  param_3+ 0x630 -> param_2+0x18c0  atoi  -> param_1+ 0x680  (bool)
+  L1112  param_3+ 0x198 -> param_2+ 0x660  atoi  -> param_1+ 0x675  (bool)
+  L1164  param_3+ 0x2a0 -> param_2+ 0xa80  atof  -> param_1+     ?  (?)
