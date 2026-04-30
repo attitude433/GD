@@ -612,6 +612,46 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+TOUCH_TRIGGER_FORMULA = """
+34차 — TOUCH 트리거 (ID 1611, case 0x64b) 분석 (TouchTriggerGameObject 0x4bb210):
+
+핸들러: TouchTriggerGameObject::triggerObject (0x4bb210, 217줄)
+- case 0x64b: TOUCH 트리거 — touch event 큐 등록
+- case 0x713 (1811): UNKNOWN — math 연산
+- case 0x719 (1817): UNKNOWN — math fallback
+- 다른 case: base triggerObject 호출 (FUN_1404a5f30)
+
+TOUCH 트리거 처리:
+1. param_4 (remap keys) 받기 → 큐 entry 만들기
+2. layer.color_manager + 0x208 큐 (touchEntryQueue) 에 push
+   entry 구조 (64 bytes):
+     [+0x4]  uVar6 (color random?)
+     [+0x8]  trigger_kind
+     [+0xc]  target_group_id
+     [+0x10] uVar1 (key 0x675 = ?)
+     [+0x14] player_index
+     [+0x18] uniqueID
+     [+0x1c] key 0x6a0 (ext id?)
+     [+0x20] flag (key 0x748)
+     [+0x28] vector<int> remap_keys
+
+3. 매 프레임 layer 가 touch input 감지 시:
+   - 큐 iter
+   - 매칭 entry 의 target_group_id 트리거 발동
+
+키 매핑:
+- 0x5c8 = target_group_id
+- 0x740 = touchType (key 232?)
+- 0x6a0 = touchExt (key 212?)
+- 0x675 = touchHold (boolean)
+- 0x748 = dualMode flag
+
+시뮬 통합:
+- 시뮬 player AI 가 jump 입력 → 즉시 모든 등록된 TOUCH 트리거의 target_group 발동
+- TouchHold = jump 누르고 있을 때만 활성
+"""
+
+
 SCALE_TRIGGER_FORMULA = """
 33차 — SCALE 트리거 (ID 2067) 정밀 식 (FUN_14021f4c0, 91줄):
 
