@@ -612,6 +612,50 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+PROPELL_PLAYER_FORMULA = """
+20차 — propellPlayer (0x39f850, 81줄) 정밀 식 추출:
+
+GD 패드 (yellow/pink/red/blue 등) 점프 처리:
+
+상수:
+- DAT_1406230f8 = 16.0 (jump force base multiplier)
+- DAT_140622db0 = 0.6  (Ball/Spider/Swing y-velocity 감쇠)
+- DAT_140622ba4 = 0.8  (speed-modified force 감쇠)
+- DAT_140622c24 = 1.0  (default speed mod)
+
+식:
+  sign = isUpsideDown ? -1 : +1
+  fVar6 = (player.speedMod != 1.0) ? 0.8 : 1.0
+  setPositionY(player, sign * jumpForce * 16.0 * fVar6)
+
+  # Air mode 보정:
+  if (m_isBall OR m_isSpider OR m_isSwing):
+      player.m_yVelocity *= 0.6
+
+  # State reset:
+  player[0xa1c] = 1     # m_propelled flag
+  player[0xa0c] = 0     # m_landed clear
+  player[0x9c1] = 0     # m_landed_prev clear
+  player[0x7e3] = 1     # ?
+  player[0x136] = 0     # m_dashing reset (2 bytes)
+
+  # Audio/animation:
+  if m_isRobot:  play "jump_start" sound
+  elif m_isSpider: play "fall_loop" sound
+  else: skip
+
+핵심 발견:
+- jumpForce = 16.0 × pad_strength (yellow/pink/red 별 force value)
+- Air 모드 (Ball/Spider/Swing) 는 추가 0.6× 감쇠
+- 속도 모디 (1x 외) 시 0.8× 추가 감쇠
+- 모든 모드 공통 base 식 (모드별 분기 X)
+
+시뮬 통합:
+- 패드 충돌 → setPositionY(player, sign * pad_force * 16.0 * speed_mod_factor)
+- 그 후 mode 가 air 이면 y_velocity *= 0.6
+"""
+
+
 UPDATE_MOVE_REVISED = """
 ⚠ 19차 재분석 — updateMove 의 모드 분기 의미 정정:
 
