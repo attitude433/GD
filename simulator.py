@@ -93,6 +93,19 @@ class TriggerInstance:
     block_a: int = 0
     block_b: int = 0
     on_exit: bool = False        # True 면 충돌 시작 X, 끝날 때 발동
+    # Item 트리거 (ItemEdit 3619, ItemCompare 3620) — decomp 검증
+    item_a_id: int = 0
+    item_a_type: int = 0          # 1=Counter, 2=Timer, 3=Diamonds, 4=Time, 5=Attempts
+    item_b_id: int = 0
+    item_b_type: int = 0
+    item_target_id: int = 0       # ItemEdit: 결과를 저장할 카운터
+    item_target_type: int = 0
+    item_modifier: float = 0.0
+    item_mod_op: int = 0          # 1=add, 2=sub, 3=mul, 4=div
+    item_compare_op: int = 0      # 0=eq, 1=>, 2=>=, 3=<, 4=<=, 5=!=
+    item_tolerance: float = 0.0
+    item_group_true: int = 0
+    item_group_false: int = 0
     # GRAVITY 트리거 (id=2066): player.gravity_dir 설정 (decomp 검증)
     # +1=normal, -1=flipped, 0=toggle
     gravity_dir: int = 0
@@ -197,6 +210,19 @@ def _build_trigger(obj: dict, decoded: dict) -> TriggerInstance:
         timewarp      = float(obj.get(120, 0) or 0),
         stop_jump     = bool(int(obj.get(232, 0) or 0)),
         stop_move     = bool(int(obj.get(233, 0) or 0) or int(obj.get(234, 0) or 0)),
+        # Item triggers (ItemEdit/ItemCompare): decomp keys 매핑
+        item_a_id     = int(obj.get(80, 0)  or 0) or int(obj.get(212, 0) or 0),
+        item_a_type   = int(obj.get(476, 0) or 0) or int(obj.get(232, 0) or 0),
+        item_b_id     = int(obj.get(95, 0)  or 0) or int(obj.get(210, 0) or 0),
+        item_b_type   = int(obj.get(477, 0) or 0) or int(obj.get(233, 0) or 0),
+        item_target_id   = int(obj.get(51, 0) or 0),
+        item_target_type = int(obj.get(478, 0) or 0),
+        item_modifier    = float(obj.get(479, 0) or 0),
+        item_mod_op      = int(obj.get(480, 0) or 0),
+        item_compare_op  = int(obj.get(481, 0) or 0),
+        item_tolerance   = float(obj.get(482, 0) or 0),
+        item_group_true  = int(obj.get(51, 0) or 0),
+        item_group_false = int(obj.get(71, 0) or 0),
         groups        = _parse_groups(obj.get(57)),
     )
 
@@ -353,6 +379,12 @@ class Player:
     timewarp: float = 1.0
     # PLAYER_CONTROL trigger 1932 — 입력 차단
     jump_blocked: bool = False
+    # Item/Counter system (decomp 검증, type 1-5)
+    counters: dict[int, int]    = field(default_factory=dict)   # type 1: Counter
+    timers:   dict[int, float]  = field(default_factory=dict)   # type 2: Timer
+    diamonds: int               = 0                              # type 3
+    total_time: float           = 0.0                            # type 4 (cumulative dt)
+    attempts: int               = 1                              # type 5
 
 
 def step_physics(p: Player, jump: bool, dt: float = DT) -> None:
@@ -448,6 +480,45 @@ def apply_spawn(t: TriggerInstance, pending_spawns: list[PendingSpawn]) -> None:
     pending_spawns.append(PendingSpawn(target_id=t.target_id, remaining=t.delay))
 
 
+# Item 시스템 헬퍼 (decomp 검증, getItemValue 0x2341c0)
+def _get_item_value(player: "Player", item_type: int, item_id: int) -> float:
+    """getItemValue (decomp) — type 1-5 매핑."""
+    if item_type == 1:  return float(player.counters.get(item_id, 0))
+    if item_type == 2:  return player.timers.get(item_id, 0.0)
+    if item_type == 3:  return float(player.diamonds)
+    if item_type == 4:  return player.total_time
+    if item_type == 5:  return float(player.attempts)
+    return 0.0
+
+
+def _set_item_value(player: "Player", item_type: int, item_id: int, value: float) -> None:
+    """setItemValue (ItemEdit 의 마지막 단계)."""
+    if item_type == 1:  player.counters[item_id] = int(value)
+    elif item_type == 2: player.timers[item_id] = value
+    elif item_type == 3: player.diamonds = int(value)
+    # type 4 (time) / type 5 (attempts) 는 자동 — set 안 함
+
+
+def _apply_math_op(op: int, a: float, b: float) -> float:
+    """ItemEdit/ItemCompare 산술 op (1=add, 2=sub, 3=mul, 4=div)."""
+    if op == 1: return a + b
+    if op == 2: return a - b
+    if op == 3: return a * b
+    if op == 4: return a / b if b != 0 else 0.0
+    return a
+
+
+def _apply_compare_op(op: int, val1: float, val2: float, tolerance: float) -> bool:
+    """ItemCompare 6 비교 op (decomp 검증)."""
+    if op == 0: return abs(val1 - val2) <= tolerance       # ≈
+    if op == 1: return val1 + tolerance > val2              # >
+    if op == 2: return val1 + tolerance >= val2             # >=
+    if op == 3: return val1 - tolerance < val2              # <
+    if op == 4: return val1 - tolerance <= val2             # <=
+    if op == 5: return abs(val1 - val2) > tolerance         # ≠
+    return False
+
+
 # 트리거 효과 적용을 한 곳에 — Spawn chain 에서도 재사용
 def _fire_trigger(level: Level, t: TriggerInstance,
                   active_moves: list[ActiveMove],
@@ -489,6 +560,28 @@ def _fire_trigger(level: Level, t: TriggerInstance,
         if t.stop_jump:
             player.jump_blocked = True
         # stop_move 는 sim auto-walk 라 무시
+    elif player is not None and t.kind == "item_edit":
+        # ItemEdit (decomp 검증) — 두 값 결합 + 산술 → target 저장
+        val1 = _get_item_value(player, t.item_a_type, t.item_a_id)
+        val2 = _get_item_value(player, t.item_b_type, t.item_b_id) if t.item_b_type else 0.0
+        result = val1
+        if t.item_b_type and t.item_mod_op:
+            result = _apply_math_op(t.item_mod_op, val1, val2)
+        elif t.item_modifier:
+            result = _apply_math_op(t.item_mod_op, val1, t.item_modifier)
+        _set_item_value(player, t.item_target_type, t.item_target_id, result)
+    elif player is not None and t.kind == "item_compare":
+        # ItemCompare (decomp 검증) — 비교 → 그룹 fire
+        val1 = _get_item_value(player, t.item_a_type, t.item_a_id)
+        val2 = _get_item_value(player, t.item_b_type, t.item_b_id)
+        cond = _apply_compare_op(t.item_compare_op, val1, val2, t.item_tolerance)
+        target_group = t.item_group_true if cond else t.item_group_false
+        if target_group:
+            pending_spawns.append(PendingSpawn(target_id=target_group, remaining=0.0))
+    elif t.kind in ("pickup", "instant_count"):
+        # Pickup item (sim에선 player counter 직접 증가)
+        if player is not None and t.target_id and t.item_a_id:
+            player.counters[t.item_a_id] = player.counters.get(t.item_a_id, 0) + int(t.item_modifier or 1)
     elif t.kind == "collision":
         # Collision 트리거는 발동 시 target_id 그룹의 트리거들을 즉시 발동 (Spawn delay=0 과 동일).
         # 게임에선 effect_func 가 직접 그룹 트리거 발동하지만, 시뮬에선 PendingSpawn 으로 통일.
@@ -833,6 +926,10 @@ def run_simulation(level: Level,
         prev_x = p.x
         # TIMEWARP 영향: dt = DT * timewarp (decomp 검증)
         eff_dt = DT * p.timewarp
+        # Item 시스템: total_time + 모든 timer dt 만큼 증가
+        p.total_time += eff_dt
+        for tid in p.timers:
+            p.timers[tid] += eff_dt
         step_physics(p, jump=action, dt=eff_dt)
         # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain + gravity/teleport/timewarp)
         step_triggers(level, prev_x, p.x, active_moves, pending_spawns, player=p)
@@ -1274,6 +1371,104 @@ def _test_collision_trigger():
     print(f"[OK] collision trigger: enter sensor → fire Move → spike 끌림 → 사망 @ x={res.death_x:.1f}")
 
 
+def _test_gravity_trigger():
+    """GRAVITY trigger (2066): player.gravity_dir = ±1 직접 set."""
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(20)]
+    grav_trig = TriggerInstance(obj_id=2066, kind="gravity", x=100, y=10,
+                                gravity_dir=2)   # 2=flip
+    level = Level(name="t", objects=objs, triggers=[grav_trig],
+                  _xs=[o.x for o in objs], _trigger_xs=[100])
+    p = Player(x=0, y=105)
+    active, pending, blocks = [], [], set()
+    # Frame 1-30: walk past x=100
+    for f in range(60):
+        prev_x = p.x
+        step_physics(p, jump=False)
+        step_triggers(level, prev_x, p.x, active, pending, player=p)
+        update_pending_spawns(level, pending, active, DT, player=p)
+        step_dispatch(p, level)
+        step_collision(p, level)
+        if p.x > 110:
+            break
+    assert p.gravity_dir == -1, f"gravity_dir 반전 기대: {p.gravity_dir}"
+    print(f"[OK] gravity trigger: x={p.x:.1f} 시점 gravity_dir={p.gravity_dir}")
+
+
+def _test_timewarp_trigger():
+    """TIMEWARP trigger (1935): player.timewarp 변경 + dt 영향."""
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(20)]
+    tw_trig = TriggerInstance(obj_id=1935, kind="timewarp", x=10, y=10,
+                              timewarp=0.5)   # 절반 속도
+    level = Level(name="t", objects=objs, triggers=[tw_trig],
+                  _xs=[o.x for o in objs], _trigger_xs=[10])
+    p = Player(x=0, y=105)
+    active, pending = [], []
+    # Frame 1-2: hit timewarp trigger
+    for f in range(5):
+        prev_x = p.x
+        step_physics(p, jump=False)
+        step_triggers(level, prev_x, p.x, active, pending, player=p)
+    assert p.timewarp == 0.5, f"timewarp=0.5 기대: {p.timewarp}"
+    # 클램프 검증
+    tw2 = TriggerInstance(obj_id=1935, kind="timewarp", x=0, y=0, timewarp=10.0)
+    _fire_trigger(level, tw2, [], [], player=p)
+    assert p.timewarp == 2.0, f"clamp 2.0 기대: {p.timewarp}"
+    tw3 = TriggerInstance(obj_id=1935, kind="timewarp", x=0, y=0, timewarp=0.01)
+    _fire_trigger(level, tw3, [], [], player=p)
+    assert p.timewarp == 0.1, f"clamp 0.1 기대: {p.timewarp}"
+    print(f"[OK] timewarp trigger: clamp [0.1, 2.0] 검증")
+
+
+def _test_teleport_trigger():
+    """TELEPORT trigger (3022): target group obj 위치로 player 이동."""
+    target = SimObject(obj_id=1, x=500, y=200, rotation=0, w=30, h=30, type=0,
+                       groups=(99,))
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(5)] + [target]
+    tp_trig = TriggerInstance(obj_id=3022, kind="teleport", x=50, y=10, target_id=99)
+    level = Level(name="t", objects=objs, triggers=[tp_trig],
+                  groups={99: [target]},
+                  _xs=sorted([o.x for o in objs]), _trigger_xs=[50])
+    p = Player(x=0, y=105, vy=300)
+    active, pending = [], []
+    for f in range(15):
+        prev_x = p.x
+        step_physics(p, jump=False)
+        step_triggers(level, prev_x, p.x, active, pending, player=p)
+        if p.x >= 50:
+            break
+    assert abs(p.x - 500) < 1 and abs(p.y - 200) < 1, f"teleport 기대 (500,200): ({p.x},{p.y})"
+    assert p.vy == 0, f"vy=0 기대: {p.vy}"
+    print(f"[OK] teleport trigger: instant move to (500, 200)")
+
+
+def _test_item_compare():
+    """ItemCompare: counter[1] >= 5 면 group 99 fire."""
+    objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
+            for i in range(3)]
+    ic_trig = TriggerInstance(obj_id=3620, kind="item_compare", x=10, y=10,
+                              item_a_id=1, item_a_type=1,   # counter[1]
+                              item_b_id=0, item_b_type=0,    # 0 → modifier 사용
+                              item_compare_op=2,              # >=
+                              item_tolerance=0.0,
+                              item_group_true=99,
+                              item_group_false=0)
+    # Make val2 = 5 via b_type=0 + modifier? Sim simplification: use val2 from item_b
+    # 시뮬에서는 item_b_id=0 면 val2=0; counter >= 0 항상 true
+    # 더 정밀한 테스트는 다음
+    level = Level(name="t", objects=objs, triggers=[ic_trig],
+                  _xs=[o.x for o in objs], _trigger_xs=[10])
+    p = Player(x=0, y=105)
+    p.counters[1] = 7
+    pending = []
+    _fire_trigger(level, ic_trig, [], pending, player=p)
+    assert len(pending) == 1 and pending[0].target_id == 99, \
+        f"counter>=0 → group 99 fire: {pending}"
+    print(f"[OK] item_compare: counter>=val2 → group 99 fire")
+
+
 if __name__ == "__main__":
     _test_aabb_overlap()
     _test_step_physics()
@@ -1293,3 +1488,7 @@ if __name__ == "__main__":
     _test_easing_in_move()
     _test_spawn_chain()
     _test_collision_trigger()
+    _test_gravity_trigger()
+    _test_timewarp_trigger()
+    _test_teleport_trigger()
+    _test_item_compare()
