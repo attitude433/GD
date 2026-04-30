@@ -612,6 +612,45 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+PARTICLE_AND_TEXTURE_TRIGGERS = """
+40차 — SPAWN_PARTICLE + BG/Ground/Mid Texture 트리거 정밀 식:
+
+★ SPAWN_PARTICLE (case 0xe18=3608, FUN_14023feb0, 132줄):
+  타겟 group 의 ParticleEmitter object (id 0x811=2065) 만 처리:
+    - 위치 = target_obj 의 위치 또는 center group 의 위치
+    - rotation 옵션 (param_4) 사용 시: pi/180 변환 (DAT_1406229bc)
+    - color/group ID 적용 (0x46c, 0x464)
+    - z order (0x470 또는 0x420)
+    - duration scaling (param_5)
+    - emitter spawn (vfunc 0x518) — 새 particle effect 생성
+
+★ BG_TEXTURE (case 0xbd5=3029):
+  texture_id = clampf(param_1[0x740], 1, 59)
+  layer + 0x854 = texture_id
+  → "game_bg_%02d_001.png" 로딩 (59 가지 BG)
+
+★ GROUND_TEXTURE (case 0xbd6=3030):
+  texture_id = clampf(param_1[0x740], 1, 22)
+  layer + 0x858 = texture_id
+  → "groundSquare_%02d_001.png" 로딩 (22 가지 ground)
+  + "groundSquare_X_2_001.png" (variant if not in special range 8-11)
+
+★ MIDDLE_GROUND_TEXTURE (case 0xbd7=3031):
+  texture_id 처리, layer + 0x85c
+  → mid-ground texture (parallax 중간 layer)
+
+★ 디자인 단계 통합:
+- 음악 섹션 변경 → BG_TEXTURE (밝음 ↔ 어둠)
+- 분위기 매핑:
+    intro: BG 5-10, ground 1-3
+    drop: BG 30-40, ground 10-15
+    bridge: BG 1, ground 1 (clean)
+    outro: 시작과 같은 BG
+- 비트마다 SPAWN_PARTICLE (drum hit, cymbal crash 같은 시각 효과)
+- 음악 절정 시 explosive particles (color 강조 적용)
+"""
+
+
 CAMERA_TRIGGERS_DETAILED = """
 39차 — Camera 트리거 5개 정밀 식 (TouchTriggerGameObject 0x4bd820):
 
