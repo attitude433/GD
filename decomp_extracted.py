@@ -612,6 +612,48 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+ITEM_EDIT_FORMULA = """
+30차 — ItemEditTrigger (0x234250, 204줄) 정밀 식 추출:
+
+GD 의 가장 정밀한 산술 트리거 — 두 값 결합 + 산술 → target counter 에 저장
+
+값 계산 단계:
+  val1 = getItemValue(item_a_type, item_a_id)
+  val2 = getItemValue(item_b_type, item_b_id)
+  current_target = getItemValue(target_type, target_id)
+
+  if has_b: val1 = combine(val1, val2, op=mod_op_b)  # add/sub/mul/div
+  if has_modifier: val1 = combine(val1, modifier, op=mod_op_a)
+  apply round_op_a (round/floor/ceil)
+  apply abs_op_a (abs/negate)
+
+  if mod_op_target != 0:
+      val1 = combine(val1, current_target, op=mod_op_target)
+  apply round_op_b
+  apply abs_op_b
+
+저장 (target_type = iVar2 = 0x748):
+  type 1 (Counter): setItemValue(target_id, val1) — int
+  type 2 (Timer):   setTimer(target_id, val1) — double
+  type 3 (Diamonds): layer + 0x864 = val1 (int)
+
+.gmd 키:
+- 0x6a0/0x694/0x5c8 = item_a/b/target_id
+- 0x740/0x744/0x748 = item_a/b/target_type
+- 0x754 (target combine), 0x758 (b combine), 0x75c (a combine), 0x768
+  = mod_op for target/a/b
+- 0x764/0x768 = round_op_a/b
+- 0x76c/0x770 = abs_op_a/b
+- 0x74c = modifier (× 1000)
+
+시뮬 통합:
+- ItemEdit 는 정확한 식 그대로 구현
+- 기본: counter[target_id] = compute(val1, val2, modifier)
+- ItemCompare 는 결과 비교 → 그룹 fire
+- 둘 합쳐 GD 의 모든 카운터/타이머 게임플레이 시뮬 가능
+"""
+
+
 ITEM_COMPARE_FORMULA = """
 29차 — ItemCompareTrigger (0x234630, 190줄) 정밀 식 추출:
 
