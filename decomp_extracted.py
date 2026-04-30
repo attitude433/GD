@@ -612,6 +612,31 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+UPDATE_MOVE_REVISED = """
+⚠ 19차 재분석 — updateMove 의 모드 분기 의미 정정:
+
+이전 가정: updateMove (673줄) = 모든 모드 물리 통합 함수
+실제: updateMove 의 모드 flag 체크 대부분이 **시각/rotation 처리**:
+  - L294-300: visual smoothing factor (sprite interpolation 속도)
+  - L497-524: rotation snap (cube 만 90도 snap, 다른 모드 skip)
+  - L498-503: "any flying mode" 분기 = 비행 모드 vs 큐브 visual 차이
+
+진짜 mode 물리는:
+  - updateJump (0x38b900, 817줄): 큐브 점프 + 일반 (mode flag 직접 체크 X)
+  - 모드별 별도 함수 (예: spiderTestJumpInternal 0x3943f0)
+  - 패드/오브 충돌 시 propellPlayer/ringJump (mode-aware velocity)
+
+따라서:
+- "Ship 0.7 가속 multiplier" 는 visual smoothing 일 가능성
+- 실제 Ship 의 부드러운 가속은 별도 메커니즘 (jump force 곡선?)
+
+다음 라운드 추적:
+- updateJump 안의 mode flag (없을 수도) — 어떻게 mode 별 jump 가 다른지
+- propellPlayer 안의 mode 분기 (0x39f850, 이미 dump 됨)
+- 모드별 점프력은 player 멤버 (m_jumpVelocity 등) 에 저장될 가능성
+"""
+
+
 MODE_FLAG_OFFSETS_CORRECTED = {
     # 7개 모드 toggleXMode 함수 검증 결과 (★★ 검증 완료, 이전 매핑 정정):
     "Ship":       (0x9b9, 0x39a4f0, "toggleFlyMode"),
