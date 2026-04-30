@@ -254,18 +254,69 @@ triggerObjectDispatch (0x2338e0) 가 호출하는 진짜 분기 함수:
 #   파생 클래스 4개도 별도 구현: 0x4b9e10, 0x4bb210, 0x4bd820, 0x4c23f0
 # =============================================================================
 
-# triggerObject base 의 case → 효과 함수 매핑 (디컴파일 src 직접 추출)
+# triggerObject base (0x4a5f30) 의 case → 효과 함수 매핑 (자동 추출 + gmdkit cross-ref)
+# parse_trigger_object.py 결과 (105 case → 22 unique 분기, 나머지는 goto LAB 공유)
+# ⚠️ 이전 (1006=Color, 1007=Pulse) 잘못. gmdkit 기준 수정:
 TRIGGER_DISPATCH_BASE = {
-    # case object_id : (효과 함수, 설명)
-    0x385: ("FUN_14021ea40", "Move (901) — FUN_14021ea40(layer, this_trigger)"),
-    0x393: ("inline:case 899/900/0x393", "BG/Color legacy (915, 899, 900) — common goto"),
-    0x3ee: ("FUN_140260c40", "Color (1006) — colorMgr.setColor(channel, R, G, B, opacity, blending, ...)"),
-    0x3ef: ("FUN_140260a70", "Pulse (1007) — colorMgr.pulseColor(channel, ...)"),
-    0x419: ("FUN_140223bc0", "Toggle (1049) — toggleGroup(layer, group_id, on/off)"),
-    0x717: ("inline:check param_1+0x6a6", "COLLISION (1815) — flag-based, see line 510"),
-    0x71a: ("inline:check param_1+0x28d", "?(1818) — early return"),
-    0x812: ("inline:set layer.player[0xb84]", "GRAVITY (2066) — set player gravity direction"),
-    # 나머지 ~95 case: 디컴파일 src 590-985 라인 참조
+    # (id_hex, id_dec) : (gmdkit_name, primary_FUN_addr, lines, 설명)
+    0x385: ("MOVE",                0x21ea40, 208, "Move trigger — group dx/dy 적용"),
+    0x3ee: ("PULSE",               0x260c40, 212, "Pulse trigger — colorMgr 에 pulse action"),
+    0x3ef: ("ALPHA",               0x260a70,  48, "Alpha trigger — group opacity 변경"),
+    0x419: ("TOGGLE",              0x223bc0,  72, "Toggle group on/off"),
+    0x716: ("FOLLOW_PLAYER_Y",     0x25cbf0,  40, "그룹이 player Y 위치 따라가게 등록"),
+    0x717: ("COLLISION",           0x25c430,  44, "두 collision_block 충돌 트리거 등록"),
+    0x779: ("ZOOM_CAMERA",         0x235cf0,  56, "카메라 zoom 변경"),
+    0x78c: ("PLAYER_CONTROL",      0x2174e0, 156, "플레이어 입력 제한 (점프/이동 잠금 등)"),
+    0x78e: ("SONG",                0x2415c0, 109, "노래 재생/일시정지/볼륨"),
+    0xb57: ("GRADIENT",            0x21f750, 207, "그라데이션 색상 영역 설정"),
+    0xb6c: ("UNKNOWN_2924",        0x221030, 478, "ID 2924 트리거 (gmdkit 미정의, 큰 함수)"),
+    0xbb7: ("UNKNOWN_2999",        0x2360b0,  20, "ID 2999 (gmdkit: EDIT_MG?)"),
+    0xbc7: ("UNKNOWN_3015",        0x2271c0, 120, "ID 3015"),
+    0xbce: ("TELEPORT",            0x20fdb0, 345, "플레이어 순간이동"),
+    0xbcf: ("UNKNOWN_3023",        0x20e760,  96, "ID 3023"),
+    0xbd9: ("ANIMATE_KEYFRAME",    0x217bc0,  73, "키프레임 애니메이션"),
+    0xe13: ("EDIT_SFX",            0x241e50, 123, "SFX 편집"),
+    0xe15: ("EDIT_SONG",           0x241940,  30, "노래 편집"),
+    0xe18: ("SPAWN_PARTICLE",      0x23feb0, 132, "파티클 spawn"),
+    0xe4d: ("RETARGET_ADV_FOLLOW", 0x22eac0, 146, "ADV_FOLLOW target 변경"),
+    # 모드/패드/포털 (case < 0x100)
+    0x3b:  ("MODE_PORTAL_INNER",   0x20e400, 139, "내부 모드 처리 (cube/ship/etc)"),
+    0xcb:  ("SPEED_PORTAL_VFAST",  0x1993b0, 985, "VERY_FAST speed (203) — 거대 함수"),
+    # inline (별도 함수 호출 X — 직접 멤버 set 또는 작은 식)
+    "inline_collision_check": (0x717, "COLLISION 트리거 본체는 0x25c430 가 등록만, 실제 충돌 감지는 update 가"),
+    "inline_gravity":         (0x812, "GRAVITY (2066) — *(int*)(layer.player+0xb84) = trigger.gravity_dir"),
+    # 나머지 ~83 case: goto LAB 으로 다른 case 와 동일 함수 호출 (case grouping)
+}
+
+# 알려진 트리거 효과 함수 주소 (검증된 매핑)
+TRIGGER_EFFECT_FUNCS = {
+    # 시뮬에 중요 (gameplay 영향)
+    0x21ea40: ("MOVE",          "group 위치 dx/dy 적용 (smallStep + duration 보간)"),
+    0x223bc0: ("TOGGLE",        "group enable/disable bit set"),
+    0x21ab80: ("SPAWN",         "spawnGroup — group 의 트리거들 발동"),
+    0x223fd0: ("ADD_TO_GROUP",  "오브젝트를 group 에 추가"),
+    0x25c430: ("COLLISION",     "Collision trigger 등록 (실제 감지는 update)"),
+    0x25cbf0: ("FOLLOW_Y",      "follow_player_y action 등록"),
+    0x2174e0: ("PLAYER_CONTROL","입력 제한 set"),
+    0x20fdb0: ("TELEPORT",      "player 위치 설정"),
+    # 시각 (시뮬 무관 — 색상/파티클/사운드)
+    0x260c40: ("PULSE",         "colorMgr pulse action"),
+    0x260a70: ("ALPHA",         "group opacity"),
+    0x21f750: ("GRADIENT",      "gradient layer"),
+    0x235cf0: ("ZOOM_CAMERA",   "카메라 줌"),
+    0x2415c0: ("SONG",          "노래 제어"),
+    0x241e50: ("EDIT_SFX",      "SFX"),
+    0x241940: ("EDIT_SONG",     "노래 편집"),
+    0x23feb0: ("SPAWN_PARTICLE","파티클"),
+    0x22eac0: ("ADV_FOLLOW",    "고급 follow"),
+    0x217bc0: ("ANIMATE",       "키프레임"),
+    # 모드 portal
+    0x20e400: ("MODE_INNER",    "모드 처리"),
+    0x1993b0: ("SPEED_VFAST",   "속도 변경 985줄 거대"),
+    0x20e760: ("?_3023",        "분류 미정"),
+    0x2271c0: ("?_3015",        "분류 미정"),
+    0x221030: ("?_2924",        "478줄 큰 함수"),
+    0x2360b0: ("?_EDIT_MG",     "20줄 작음"),
 }
 
 # 15개 triggerObject 구현 (Geode 2.2081 bindings 확인 — class별 override)
