@@ -108,13 +108,14 @@ PLAYER_OFFSETS = {
     0x16e: "m_isFlying (char — ship/UFO/wave/swing 등 공중 모드)",
     0x9b1: "m_isRobot (char)",
     0x136: "m_dashing (char)",
-    0x9b9: "m_isShip (char)",
-    0x9ba: "m_isBall (char)",
-    0x9bb: "m_isUFO (char)",
-    0x9bc: "m_isWave (char)",
-    0x9bd: "m_isRobot2 (char)",  # 별도 robot mode flag?
-    0x9be: "m_isSpider (char)",
-    0x9c4: "m_isSwingCopter (char)",
+    # ⭐ 정정 (toggleXMode 검증 완료):
+    0x9b9: "m_isShip (char) — toggleFlyMode 가 set",
+    0x9ba: "m_isUFO (char) — toggleBirdMode 가 set ⚠ 이전: Ball 로 잘못",
+    0x9bb: "m_isBall (char) — toggleRollMode 가 set ⚠ 이전: UFO 로 잘못",
+    0x9bc: "m_isWave (char) — toggleDartMode 가 set",
+    0x9bd: "m_isRobot (char) — toggleRobotMode 가 set ⚠ 이전: Robot2",
+    0x9be: "m_isSpider (char) — toggleSpiderMode 가 set",
+    0x9c4: "m_isSwingCopter (char) — toggleSwingMode 가 set",
 
     # 슬로프
     0x15e: "m_slopeCounter (int — 현재 슬로프 위에 있는 카운터)",
@@ -611,6 +612,25 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+MODE_FLAG_OFFSETS_CORRECTED = {
+    # 7개 모드 toggleXMode 함수 검증 결과 (★★ 검증 완료, 이전 매핑 정정):
+    "Ship":       (0x9b9, 0x39a4f0, "toggleFlyMode"),
+    "UFO":        (0x9ba, 0x39a820, "toggleBirdMode"),     # ⚠ 정정 (이전: Ball)
+    "Ball":       (0x9bb, 0x39b570, "toggleRollMode"),     # ⚠ 정정 (이전: UFO)
+    "Wave":       (0x9bc, 0x39af90, "toggleDartMode"),
+    "Robot":      (0x9bd, 0x39b6f0, "toggleRobotMode"),    # ⚠ 정정 (이전: Robot2)
+    "Spider":     (0x9be, 0x39ba70, "toggleSpiderMode"),
+    "SwingCopter":(0x9c4, 0x39ab20, "toggleSwingMode"),
+}
+
+# ⚠ 이전 분석들 (UPDATE_MOVE_BRANCHES, SHIP_MODE_PHYSICS, UFO_MODE_PHYSICS) 의 mode flag
+# 라벨링이 일부 잘못됨. 위 정정된 매핑 우선.
+# 단, line 번호 + flag offset 조합은 그대로 유효. 단순 mode 이름 라벨만 swap 필요:
+#   "Ball" 표기 → 실제 "UFO" (0x9ba)
+#   "UFO"  표기 → 실제 "Ball" (0x9bb)
+#   "Robot2" → "Robot"
+
+
 TELEPORT_TRIGGER_NOTES = """
 18차 — Teleport 트리거 (case 0xbce=3022) 분석 (FUN_14020fdb0, 345줄):
 
@@ -638,9 +658,12 @@ TELEPORT_TRIGGER_NOTES = """
 
 
 UFO_MODE_PHYSICS = """
-17차 — UFO 모드 (player[0x9bb]=1) 물리 분기 추출 (updateMove L603-672):
+⚠ 정정 — 17차 분석은 사실 BALL 모드 분석이었음 (player[0x9bb] = m_isBall, 이전 UFO 로 잘못 표기)
 
-UFO 만의 X-axis smoothing (m_smoothXVelocity = player[0x13c]):
+17차 — Ball 모드 (player[0x9bb]=1) 물리 분기 추출 (updateMove L603-672):
+
+Ball 모드의 X-axis smoothing (m_smoothXVelocity = player[0x13c]):
+(이전 잘못 "UFO" 로 표기 — 0x9bb는 Ball)
 
 조건: NOT (UFO disabled OR isJumping OR isDying)
 이 분기는 dash 모드 (player[0x165]=1) 일 때만 활성:
