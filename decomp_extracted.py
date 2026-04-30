@@ -248,6 +248,47 @@ triggerObjectDispatch (0x2338e0) 가 호출하는 진짜 분기 함수:
 """
 
 # =============================================================================
+# triggerObject (★★★ 80개 트리거 dispatch 발견 — 0x4a5f30, 1297줄, 105 case)
+# Geode 2.2081 bindings 에서 주소 확인:
+#   EffectGameObject::triggerObject = win 0x4a5f30
+#   파생 클래스 4개도 별도 구현: 0x4b9e10, 0x4bb210, 0x4bd820, 0x4c23f0
+# =============================================================================
+
+# triggerObject base 의 case → 효과 함수 매핑 (디컴파일 src 직접 추출)
+TRIGGER_DISPATCH_BASE = {
+    # case object_id : (효과 함수, 설명)
+    0x385: ("FUN_14021ea40", "Move (901) — FUN_14021ea40(layer, this_trigger)"),
+    0x393: ("inline:case 899/900/0x393", "BG/Color legacy (915, 899, 900) — common goto"),
+    0x3ee: ("FUN_140260c40", "Color (1006) — colorMgr.setColor(channel, R, G, B, opacity, blending, ...)"),
+    0x3ef: ("FUN_140260a70", "Pulse (1007) — colorMgr.pulseColor(channel, ...)"),
+    0x419: ("FUN_140223bc0", "Toggle (1049) — toggleGroup(layer, group_id, on/off)"),
+    0x717: ("inline:check param_1+0x6a6", "COLLISION (1815) — flag-based, see line 510"),
+    0x71a: ("inline:check param_1+0x28d", "?(1818) — early return"),
+    0x812: ("inline:set layer.player[0xb84]", "GRAVITY (2066) — set player gravity direction"),
+    # 나머지 ~95 case: 디컴파일 src 590-985 라인 참조
+}
+
+# Spawn(0x4f4=1268), Pickup, Animate, Camera 등 base 에 없는 case = 파생 클래스 override
+TRIGGER_DISPATCH_DERIVED_ADDRS = [
+    0x4b9e10,  # 분석 실패 (주소 불일치 가능)
+    0x4bb210,  # 217 lines
+    0x4bd820,  # 110 lines
+    0x4c23f0,  # 161 lines
+]
+
+# 알려진 효과 함수 주소 (이미 있는 것들 + triggerObject 가 호출하는 것들)
+TRIGGER_EFFECT_FUNCTIONS = {
+    "spawnGroup":  0x21ab80,
+    "toggleGroup": 0x223bc0,
+    "addToGroup":  0x223fd0,
+    "MoveEffect":  0x21ea40,    # NEW — Move trigger 진짜 효과
+    "ColorSet":    0x260c40,    # NEW — Color trigger 진짜 효과
+    "PulseEffect": 0x260a70,    # NEW — Pulse trigger 진짜 효과
+    # GRAVITY, COLLISION 은 inline 작은 코드라 별도 함수 없음
+}
+
+
+# =============================================================================
 # 다음 라운드 추출 대상 (CLAUDE.md 다음 단계)
 # =============================================================================
 

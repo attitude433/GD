@@ -112,7 +112,7 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 | 데이터셋 | 5% | 9개만 (수백~수천 필요) |
 | 시뮬레이터 | 60% | 큐브+OpenGD 정밀+회전/스케일/no_touch/z_layer/flip 적용. 트리거 동작 깊이 부족 |
 | 트리거 catalog | 70% | 80개 분류·키매핑. 6 verified / 74 inferred. 동작 함수 3개만 구현 |
-| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 37 함수 + 30 DAT 상수 (D:\GhidraProjects\decomp/) |
+| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 41 함수 + 30 DAT + triggerObject 105 case (D:\GhidraProjects\decomp/) |
 | 생성 시스템 | 0% | 아직 시작 안 함 |
 
 ### 완료된 거
@@ -249,7 +249,16 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `D:\GhidraProjects\decomp\_DAT_constants.txt` / `_DAT_constants_v2.txt` — 30+ DAT 값
 - `decomp_extracted.py` — Python 측 정리 결과 (시뮬레이터에서 import 해서 쓸 수 있음)
 
-**다음 작업 순서** (재정렬 — 3차 추출 후 깨달음 반영):
+**4차 추출 (2026-04-30 추가)**:
+- `customObjectSetup` 자동 파서 (`parse_custom_object_setup.py`) — 76 .gmd 키→멤버 매핑
+- `gmd_key = key_offset / 8` 검증 (gmdkit 표준과 5개 매칭)
+- `customSetup` 수동 추출 — `CUSTOM_SETUP_DEFAULTS` 18개 object의 디폴트 값
+- **★★★ `triggerObject` (0x4a5f30, 1297줄, 105 case) 발견** — Geode bindings 에서 주소 확인.
+  Move(0x385)→FUN_14021ea40, Color(0x3ee)→FUN_140260c40, Pulse(0x3ef)→FUN_140260a70,
+  Toggle(0x419)→toggleGroup, GRAVITY(0x812)/COLLISION(0x717)은 inline.
+  Spawn(0x4f4) 등은 파생 클래스 4개(0x4b9e10/0x4bb210/0x4bd820/0x4c23f0)에 override.
+
+**다음 작업 순서** (재정렬 — 4차 추출 후 깨달음 반영):
 
 1. **`customObjectSetup` (2200줄) 의 case 0x716/0x717/0x718/0x778/0x779/0x78b-0x78f/0x812
    분석** — 각 트리거의 .gmd 키 → 멤버 offset 매핑. 패턴이 일정 (atoi/atof로 string parse,
