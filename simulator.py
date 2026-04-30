@@ -292,11 +292,16 @@ def load_level(gmd_path: str | Path,
         for g in t.groups:
             trigger_groups.setdefault(g, []).append(t)
 
-    # Collision 트리거 (id=1815) 중 block_b == 0 (PLAYER 와 충돌) 만 indexable.
-    # 시뮬은 일단 player vs collision_block 만 지원 (block-block 충돌은 추후).
+    # Collision 트리거 (id=1815): block_a 또는 block_b 가 0 = PLAYER 의미 (Every End .gmd 검증).
+    # 한쪽이 0(player) 이고 다른쪽이 양수(block_id) 인 트리거만 인덱스.
+    # 양쪽 다 양수면 block-vs-block (추후 지원).
     collision_player_triggers: dict[int, list[TriggerInstance]] = {}
     for t in triggers:
-        if t.obj_id == 1815 and t.block_a > 0 and t.block_b == 0:
+        if t.obj_id != 1815:
+            continue
+        if t.block_a == 0 and t.block_b > 0:
+            collision_player_triggers.setdefault(t.block_b, []).append(t)
+        elif t.block_b == 0 and t.block_a > 0:
             collision_player_triggers.setdefault(t.block_a, []).append(t)
 
     block_id_objects = [o for o in sim_objs if o.block_id > 0]
