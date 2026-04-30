@@ -612,6 +612,32 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+FUNCTION_LABEL_CORRECTIONS = """
+31차 — 함수 라벨 정정 (Geode binding 검증 후):
+
+이전 잘못된 라벨:
+  X 0x38f140 = "REAL_collidedWithObjectInternal" (51줄)
+    → ✓ handleRotatedCollisionInternal (회전 hazard 충돌)
+
+  X 0x391a70 = "REAL_collidedWithObjectVariant" (1234줄)
+    → ✓ collidedWithObjectInternal (★ 진짜 메인 충돌)
+
+정정된 4 충돌 함수 chain:
+  0x3919b0 = collidedWithObject (top wrapper, 26줄)
+            → 분기: handleRotatedCollisionInternal 또는 collidedWithObjectInternal
+  0x391a70 = collidedWithObjectInternal (1234줄, ★ 메인 충돌 로직)
+  0x38f140 = handleRotatedCollisionInternal (51줄, 회전 hazard)
+  0x38f810 = collidedWithSlopeInternal (744줄, 슬로프 충돌)
+
+이전 분석 결과는 모두 유효 (1234줄의 알고리즘은 그대로) — 단순 이름만 정정.
+
+추가로 발견:
+- objectsCollided (0x219170): block-block 충돌 감지 시 호출 (COLLISION 트리거 fire 시작)
+- bumpPlayer (0x2179d0, 49줄): GJBaseGameLayer 측 wrapper
+- playBumpEffect (0x39fa50): visual after bump
+"""
+
+
 ITEM_EDIT_FORMULA = """
 30차 — ItemEditTrigger (0x234250, 204줄) 정밀 식 추출:
 
