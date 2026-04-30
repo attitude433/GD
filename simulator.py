@@ -383,18 +383,29 @@ def _fire_trigger(level: Level, t: TriggerInstance,
 def apply_move(level: Level, t: TriggerInstance,
                active_moves: list[ActiveMove]) -> None:
     """
-    Move:
-      - duration <= 0  → instant (dx/dy 즉시 누적)
-      - duration > 0   → ActiveMove 등록, 매 프레임 보간 적용
+    Move 트리거 (case 0x385) — GD.exe FUN_14021ea40 (decomp 검증).
+
+    실제 게임 로직 3 분기:
+      1. m_useTarget=1 → 큐에 enqueue, 별도 follow 처리 (시뮬 미지원)
+      2. m_smallStepMode=1 (또는 duration<=0) → 즉시 group 전 멤버에 dX/dY 추가
+      3. m_smallStepMode=0 AND duration>0 → MoveActionMgr 에 보간 액션 등록
+
+    GameObject 위치 멤버 (디컴파일 검증):
+      +0x3b8 m_position.x (double), +0x3c0 m_position.y (double)
+      +0x4d0/0x4d4 rendered float X/Y, +0x368 dirty flag
+
+    시뮬은 (2)+(3)만 지원. obj.dx/dy 가 누적 offset (rendered 별도 추적 X).
     """
     objs = level.groups.get(t.target_id, [])
     if not objs:
         return
     if t.duration <= 0:
+        # smallStep 모드 — 즉시 적용
         for obj in objs:
             obj.dx += t.move_x
             obj.dy += t.move_y
     else:
+        # 보간 모드 — MoveActionMgr 시뮬 (FUN_14025c700 대응)
         active_moves.append(ActiveMove(trigger=t, elapsed=0.0, objs=objs))
 
 
