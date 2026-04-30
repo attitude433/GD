@@ -612,6 +612,49 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+RING_JUMP_STRUCTURE = """
+21차 — ringJump (0x398c00, 628줄) 구조 분석:
+
+ringJump 는 ALL ring/orb types 의 jump 처리. 객체 type (vfunc 0x660 = getObjectType) 별 분기:
+
+- type 0x24 (36) = ?  → 특수 처리 (FUN_140398430)
+- type 0x2e (46) = TELEPORT ORB → calls teleportPlayer (FUN_14020fdb0)
+- type 0x2b (43) = GRAVITY RING (Yellow gravity) → slope 또는 gravity flip
+- type 0x25 (37) = ?  → broadcasts event 0x29
+- type 0x26 (38) = same as 0x25
+- type 0x20 (32) = X-VELOCITY RING (Green pad?)
+                  → setPositionY(player, sign * DAT_140623880 * mode_factor)
+                  → Spider/Robot 면 *DAT_140622c54 (1.1)
+- type 0x1d (29) = Ship-only ring → fVar24 *= DAT_140622b74 (0.7)
+- type 0x0c (12) = mode-aware multi-ring (jump force):
+                  Ship  : *DAT_140622ac4
+                  UFO   : *DAT_140622ad4
+                  Ball  : *DAT_140622b94
+                  default: *DAT_140622b80
+- type 0x23 (35) = COMPLEX multi-ring (5 sub-cases):
+                  default Spider: *DAT_140622cd4
+                  Robot : *DAT_140622c9c
+                  Ball  : *DAT_140622cc4
+                  UFO   : *DAT_140622c2c (speedMod ==1) or *DAT_140622cd0
+                  Ship  : *DAT_140622cd8 (speedMod !=1)
+- type 0x0d (13) = DOWN ring → fVar24 *= DAT_140622ba4 (0.8)
+- 그 외: *DAT_140622bd8 (Robot 한정)
+
+공통 처리 (ALL types):
+  sign = isUpsideDown ? -1 : +1
+  speed_factor = (speedMod != 1.0) ? 0.8 : 1.0
+  setPositionY(player, sign * fVar24 * speed_factor)
+
+  if mode in (Ball, Spider, Swing):
+      player.m_yVelocity *= DAT_140622db0 (0.6) or DAT_140622dd0
+  if Spider:
+      stop visual actions (skip)
+
+이 함수는 진짜 GD 의 모든 ring/orb 효과 통합. ~15 새 DAT 상수 더 dump 필요.
+다음: 모드별/링타입별 multiplier 값 확인 → 시뮬에 통합.
+"""
+
+
 PROPELL_PLAYER_FORMULA = """
 20차 — propellPlayer (0x39f850, 81줄) 정밀 식 추출:
 
