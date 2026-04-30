@@ -151,8 +151,12 @@ class Level:
     # Collision 트리거 (1815) lookup — block_b == 0 (PLAYER) 인 트리거만
     # key = block_a ID (player 와 충돌하는 collision_block 의 block_id)
     collision_player_triggers: dict[int, list[TriggerInstance]] = field(default_factory=dict)
+    # Block-vs-Block COLLISION — (a, b) sorted pair → triggers
+    collision_block_triggers: dict[tuple[int, int], list[TriggerInstance]] = field(default_factory=dict)
     # block_id > 0 sensor 객체들 (Collision 감지용 — player nearby 와 별도로 빠르게 iter)
     block_id_objects: list[SimObject] = field(default_factory=list)
+    # block_id → sensor 객체 lookup (block-vs-block 용)
+    block_id_to_objects: dict[int, list[SimObject]] = field(default_factory=dict)
     _xs: list[float] = field(default_factory=list)   # bisect 용 X 키 (objects)
     _trigger_xs: list[float] = field(default_factory=list)            # bisect 용 X 키 (triggers)
 
@@ -352,10 +356,10 @@ def load_level(gmd_path: str | Path,
         for g in t.groups:
             trigger_groups.setdefault(g, []).append(t)
 
-    # Collision 트리거 (id=1815): block_a 또는 block_b 가 0 = PLAYER 의미 (Every End .gmd 검증).
-    # 한쪽이 0(player) 이고 다른쪽이 양수(block_id) 인 트리거만 인덱스.
-    # 양쪽 다 양수면 block-vs-block (추후 지원).
+    # Collision 트리거 (id=1815): block_a/block_b 매칭별 인덱싱 (decomp 검증).
+    # 0 = PLAYER 특수.
     collision_player_triggers: dict[int, list[TriggerInstance]] = {}
+    collision_block_triggers: dict[tuple[int, int], list[TriggerInstance]] = {}
     for t in triggers:
         if t.obj_id != 1815:
             continue
@@ -363,8 +367,15 @@ def load_level(gmd_path: str | Path,
             collision_player_triggers.setdefault(t.block_b, []).append(t)
         elif t.block_b == 0 and t.block_a > 0:
             collision_player_triggers.setdefault(t.block_a, []).append(t)
+        elif t.block_a > 0 and t.block_b > 0:
+            # block-vs-block — sorted pair as key (a/b 순서 무관)
+            pair = (min(t.block_a, t.block_b), max(t.block_a, t.block_b))
+            collision_block_triggers.setdefault(pair, []).append(t)
 
     block_id_objects = [o for o in sim_objs if o.block_id > 0]
+    block_id_to_objects: dict[int, list[SimObject]] = {}
+    for o in block_id_objects:
+        block_id_to_objects.setdefault(o.block_id, []).append(o)
 
     return Level(
         name           = meta.get("k2", "?"),
@@ -373,7 +384,9 @@ def load_level(gmd_path: str | Path,
         groups         = groups,
         trigger_groups = trigger_groups,
         collision_player_triggers = collision_player_triggers,
+        collision_block_triggers = collision_block_triggers,
         block_id_objects = block_id_objects,
+        block_id_to_objects = block_id_to_objects,
         _xs            = [o.x for o in sim_objs],
         _trigger_xs    = [t.x for t in triggers],
     )
@@ -694,15 +707,21 @@ def update_pending_spawns(level: Level, pending: list[PendingSpawn],
 def step_collision_triggers(level: Level, p: "Player",
                              prev_blocks: set[int],
                              active_moves: list[ActiveMove],
-                             pending_spawns: list[PendingSpawn]) -> set[int]:
+                             pending_spawns: list[PendingSpawn],
+                             prev_block_pairs: set[tuple[int, int]] | None = None,
+                             ) -> tuple[set[int], set[tuple[int, int]]]:
     """
-    매 프레임 player AABB vs collision_block (block_id > 0) 검사.
-    enter/exit 이벤트로 COLLISION 트리거 (id=1815) 발동.
+    매 프레임 collision 검사 (decomp 검증):
+    1. player vs collision_block — enter/exit COLLISION 트리거 (id=1815) 발동
+    2. block-vs-block — 두 collision_block 페어 overlap 시 트리거 발동
 
-    Returns: 이 프레임의 colliding block_ids (다음 프레임에 prev_blocks 로 전달)
+    Returns: (current_blocks, current_block_pairs) — 다음 프레임 prev 로 전달
     """
-    if not level.collision_player_triggers:
-        return prev_blocks      # 시뮬할 collision 트리거 자체가 없으면 skip
+    prev_block_pairs = prev_block_pairs or set()
+    if not level.collision_player_triggers and not level.collision_block_triggers:
+        return prev_blocks, prev_block_pairs    # 트리거 없으면 skip
+
+    # 1. Player vs collision_block
     current: set[int] = set()
     for o in level.block_id_objects:
         if not o.enabled:
@@ -713,16 +732,50 @@ def step_collision_triggers(level: Level, p: "Player",
 
     entered = current - prev_blocks
     exited  = prev_blocks - current
-
     for bid in entered:
         for t in level.collision_player_triggers.get(bid, ()):
             if not t.on_exit:
                 _fire_trigger(level, t, active_moves, pending_spawns, p)
-
     for bid in exited:
         for t in level.collision_player_triggers.get(bid, ()):
             if t.on_exit:
                 _fire_trigger(level, t, active_moves, pending_spawns, p)
+
+    # 2. Block-vs-block (decomp 검증) — 등록된 (a, b) 페어만 체크
+    current_pairs: set[tuple[int, int]] = set()
+    if level.collision_block_triggers:
+        for (a, b), _trigs in level.collision_block_triggers.items():
+            objs_a = level.block_id_to_objects.get(a, ())
+            objs_b = level.block_id_to_objects.get(b, ())
+            if not objs_a or not objs_b:
+                continue
+            # O(N×M) but typically small (~5 blocks per ID)
+            for oa in objs_a:
+                if not oa.enabled:
+                    continue
+                ax, ay, aw, ah = effective_box(oa)
+                for ob in objs_b:
+                    if not ob.enabled or ob is oa:
+                        continue
+                    bx, by, bw, bh = effective_box(ob)
+                    if aabb_overlap(ax, ay, aw, ah, bx, by, bw, bh):
+                        current_pairs.add((a, b))
+                        break
+                if (a, b) in current_pairs:
+                    break
+
+        bb_entered = current_pairs - prev_block_pairs
+        bb_exited  = prev_block_pairs - current_pairs
+        for pair in bb_entered:
+            for t in level.collision_block_triggers.get(pair, ()):
+                if not t.on_exit:
+                    _fire_trigger(level, t, active_moves, pending_spawns, p)
+        for pair in bb_exited:
+            for t in level.collision_block_triggers.get(pair, ()):
+                if t.on_exit:
+                    _fire_trigger(level, t, active_moves, pending_spawns, p)
+
+    return current, current_pairs
 
     return current
 
@@ -1020,6 +1073,7 @@ def run_simulation(level: Level,
     active_moves:   list[ActiveMove]   = []
     pending_spawns: list[PendingSpawn] = []
     collision_blocks: set[int]         = set()
+    collision_block_pairs: set[tuple[int, int]] = set()
 
     for f in range(max_frames):
         action = actions[f] if f < len(actions) else False
@@ -1049,9 +1103,10 @@ def run_simulation(level: Level,
         step_physics(p, jump=(action and not ring_fired), dt=eff_dt)
         # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain + gravity/teleport/timewarp)
         step_triggers(level, prev_x, p.x, active_moves, pending_spawns, player=p)
-        # Collision 트리거 (1815) — player vs collision_block enter/exit
-        collision_blocks = step_collision_triggers(level, p, collision_blocks,
-                                                    active_moves, pending_spawns)
+        # Collision 트리거 (1815) — player vs block + block vs block
+        collision_blocks, collision_block_pairs = step_collision_triggers(
+            level, p, collision_blocks, active_moves, pending_spawns,
+            prev_block_pairs=collision_block_pairs)
         # delay 카운트다운 + Spawn chain
         update_pending_spawns(level, pending_spawns, active_moves, eff_dt, player=p)
         # 진행 중 Move 보간 갱신

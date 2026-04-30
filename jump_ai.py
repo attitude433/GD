@@ -75,6 +75,8 @@ def run_with_greedy_ai(level: Level, max_frames: int = 60 * 600,
     collision_blocks: set[int]         = set()
 
     jump_log = []
+    collision_block_pairs: set = set()
+    from simulator import step_ring_check, fire_ring_jump, fire_touch_triggers
     for f in range(max_frames):
         # AI: greedy 점프 결정
         action = greedy_jump_decide(p, level, lookahead_units=lookahead)
@@ -89,10 +91,18 @@ def run_with_greedy_ai(level: Level, max_frames: int = 60 * 600,
         p.total_time += eff_dt
         for tid in p.timers:
             p.timers[tid] += eff_dt
-        step_physics(p, jump=action, dt=eff_dt)
+        # Ring orb + Touch trigger (decomp 검증)
+        step_ring_check(p, level)
+        ring_fired = False
+        if action and p.touched_rings:
+            ring_fired = fire_ring_jump(p)
+        if action:
+            fire_touch_triggers(level, p, active_moves, pending_spawns)
+        step_physics(p, jump=(action and not ring_fired), dt=eff_dt)
         step_triggers(level, prev_x, p.x, active_moves, pending_spawns, player=p)
-        collision_blocks = step_collision_triggers(level, p, collision_blocks,
-                                                    active_moves, pending_spawns)
+        collision_blocks, collision_block_pairs = step_collision_triggers(
+            level, p, collision_blocks, active_moves, pending_spawns,
+            prev_block_pairs=collision_block_pairs)
         update_pending_spawns(level, pending_spawns, active_moves, eff_dt, player=p)
         update_active_moves(active_moves, eff_dt)
         step_dispatch(p, level)
