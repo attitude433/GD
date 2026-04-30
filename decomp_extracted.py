@@ -611,6 +611,32 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+TELEPORT_TRIGGER_NOTES = """
+18차 — Teleport 트리거 (case 0xbce=3022) 분석 (FUN_14020fdb0, 345줄):
+
+처리 흐름:
+1. param_3 = player (or 기본 = layer.player1)
+2. player[0x560] = 1 (teleport flag set)
+3. param_2[0xe9] = target object reference (group lookup)
+4. 만약 target 없으면:
+   - layer 의 group 에서 random 선택 (DAT_1406c2ef8 = LCG seed: x*0x343fd+0x269ec3)
+   - 단일 target 이면 fVar25=0, 여러개면 (rand & 0x7fff) / DAT_140623644
+5. param_2[0x754] = target.position.y - param_2.position.y (Y offset calc)
+6. player position = target position 으로 이동
+7. easing/duration 적용 가능 (CCSequence + CCDelayTime + CCHide)
+
+핵심 데이터:
+- player[0x560] = m_isTeleporting flag
+- DAT_1406c2ef8 = global LCG random state
+- DAT_140623644 = 0x7fff_float (random normalize)
+
+시뮬 통합:
+- Teleport 발동 시 player.x/y = target.x/y instant
+- 여러 target 이면 random 선택
+- duration 옵션은 CCAction sequence (시뮬에선 instant 충분)
+"""
+
+
 UFO_MODE_PHYSICS = """
 17차 — UFO 모드 (player[0x9bb]=1) 물리 분기 추출 (updateMove L603-672):
 
