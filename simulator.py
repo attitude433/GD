@@ -93,6 +93,16 @@ class TriggerInstance:
     block_a: int = 0
     block_b: int = 0
     on_exit: bool = False        # True 면 충돌 시작 X, 끝날 때 발동
+    # GRAVITY 트리거 (id=2066): player.gravity_dir 설정 (decomp 검증)
+    # +1=normal, -1=flipped, 0=toggle
+    gravity_dir: int = 0
+    # TIMEWARP (id=1935): clampf(value, 0.1, 2.0)
+    timewarp: float = 0.0
+    # TELEPORT (id=3022): target obj 위치로 instant move
+    # (target_id 그룹의 첫 번째 obj 위치 사용)
+    # PLAYER_CONTROL (id=1932): 입력 차단
+    stop_jump: bool = False
+    stop_move: bool = False     # left/right
     # 시뮬 상태
     fired: bool = False          # 이미 발동했는지
     groups: tuple[int, ...] = ()
@@ -180,6 +190,13 @@ def _build_trigger(obj: dict, decoded: dict) -> TriggerInstance:
         block_a       = int(obj.get(80, 0) or 0),
         block_b       = int(obj.get(95, 0) or 0),
         on_exit       = bool(int(obj.get(93, 0) or 0)),
+        # GRAVITY (2066): key 148 = gravity_dir (검증), 1=normal, 2=flip, 0=toggle
+        # TIMEWARP (1935): key 120 = timewarp value (검증)
+        # PLAYER_CONTROL (1932): keys 232/233/234/235 (stop_jump/...)
+        gravity_dir   = int(obj.get(148, 0) or 0),
+        timewarp      = float(obj.get(120, 0) or 0),
+        stop_jump     = bool(int(obj.get(232, 0) or 0)),
+        stop_move     = bool(int(obj.get(233, 0) or 0) or int(obj.get(234, 0) or 0)),
         groups        = _parse_groups(obj.get(57)),
     )
 
@@ -332,6 +349,10 @@ class Player:
     alive: bool = True
     w: float = 30.0                # 큐브 히트박스
     h: float = 30.0
+    # TIMEWARP 영향 (decomp 검증: clampf 0.1, 2.0)
+    timewarp: float = 1.0
+    # PLAYER_CONTROL trigger 1932 — 입력 차단
+    jump_blocked: bool = False
 
 
 def step_physics(p: Player, jump: bool, dt: float = DT) -> None:
@@ -430,14 +451,44 @@ def apply_spawn(t: TriggerInstance, pending_spawns: list[PendingSpawn]) -> None:
 # 트리거 효과 적용을 한 곳에 — Spawn chain 에서도 재사용
 def _fire_trigger(level: Level, t: TriggerInstance,
                   active_moves: list[ActiveMove],
-                  pending_spawns: list[PendingSpawn]) -> None:
-    """트리거 종류 별 효과 적용 (X 활성화 / Spawn chain 공용)"""
+                  pending_spawns: list[PendingSpawn],
+                  player: "Player | None" = None) -> None:
+    """트리거 종류 별 효과 적용 (X 활성화 / Spawn chain 공용).
+
+    player 가 주어지면 player-affecting 트리거 (gravity/timewarp/teleport/control)
+    도 처리. 그 외엔 group-affecting 만 (toggle/move/spawn/collision).
+    """
     if t.kind == "toggle":
         apply_toggle(level, t)
     elif t.kind == "move":
         apply_move(level, t, active_moves)
     elif t.kind == "spawn":
         apply_spawn(t, pending_spawns)
+    elif player is not None and t.kind == "gravity":
+        # GRAVITY 트리거 (2066) — player.gravity_dir 직접 set (decomp 검증)
+        # 1 = normal (gravity_dir=+1), 2 = flip (-1), 0 = toggle
+        if t.gravity_dir == 1:
+            player.gravity_dir = 1
+        elif t.gravity_dir == 2:
+            player.gravity_dir = -1
+        elif t.gravity_dir == 0:
+            player.gravity_dir *= -1
+    elif player is not None and t.kind == "timewarp":
+        # TIMEWARP (1935) — clampf(value, 0.1, 2.0) (decomp 검증)
+        player.timewarp = max(0.1, min(2.0, t.timewarp))
+    elif player is not None and t.kind == "teleport":
+        # TELEPORT (3022) — target group 의 첫 번째 obj 위치로 이동
+        objs = level.groups.get(t.target_id, [])
+        if objs:
+            target = objs[0]
+            player.x = target.x + target.dx
+            player.y = target.y + target.dy
+            player.vy = 0      # decomp: m_yVelocity 도 reset
+    elif player is not None and t.kind == "player_control":
+        # PLAYER_CONTROL (1932) — input flag set
+        if t.stop_jump:
+            player.jump_blocked = True
+        # stop_move 는 sim auto-walk 라 무시
     elif t.kind == "collision":
         # Collision 트리거는 발동 시 target_id 그룹의 트리거들을 즉시 발동 (Spawn delay=0 과 동일).
         # 게임에선 effect_func 가 직접 그룹 트리거 발동하지만, 시뮬에선 PendingSpawn 으로 통일.
@@ -476,7 +527,8 @@ def apply_move(level: Level, t: TriggerInstance,
 
 def update_pending_spawns(level: Level, pending: list[PendingSpawn],
                            active_moves: list[ActiveMove], dt: float,
-                           max_chain: int = 64) -> None:
+                           max_chain: int = 64,
+                           player: "Player | None" = None) -> None:
     """
     delay 만료된 PendingSpawn 발동. 발동된 트리거가 또 Spawn 이면 chain.
     무한 chain 방지로 한 프레임 max_chain 제한.
@@ -499,7 +551,7 @@ def update_pending_spawns(level: Level, pending: list[PendingSpawn],
         new_pending: list[PendingSpawn] = []
         for tid in triggered_now:
             for tt in level.trigger_groups.get(tid, ()):
-                _fire_trigger(level, tt, active_moves, new_pending)
+                _fire_trigger(level, tt, active_moves, new_pending, player)
         # delay=0 인 새 Spawn 은 즉시 다시 처리해야 chain
         # remaining 이 음수일 수도 있어 다시 루프
         if new_pending:
@@ -509,7 +561,7 @@ def update_pending_spawns(level: Level, pending: list[PendingSpawn],
             break
 
 
-def step_collision_triggers(level: Level, p: Player,
+def step_collision_triggers(level: Level, p: "Player",
                              prev_blocks: set[int],
                              active_moves: list[ActiveMove],
                              pending_spawns: list[PendingSpawn]) -> set[int]:
@@ -535,12 +587,12 @@ def step_collision_triggers(level: Level, p: Player,
     for bid in entered:
         for t in level.collision_player_triggers.get(bid, ()):
             if not t.on_exit:
-                _fire_trigger(level, t, active_moves, pending_spawns)
+                _fire_trigger(level, t, active_moves, pending_spawns, p)
 
     for bid in exited:
         for t in level.collision_player_triggers.get(bid, ()):
             if t.on_exit:
-                _fire_trigger(level, t, active_moves, pending_spawns)
+                _fire_trigger(level, t, active_moves, pending_spawns, p)
 
     return current
 
@@ -581,7 +633,8 @@ def update_active_moves(active_moves: list[ActiveMove], dt: float) -> None:
 
 def step_triggers(level: Level, prev_x: float, cur_x: float,
                   active_moves: list[ActiveMove],
-                  pending_spawns: list[PendingSpawn]
+                  pending_spawns: list[PendingSpawn],
+                  player: "Player | None" = None,
                   ) -> list[TriggerInstance]:
     """
     프레임 동안 [prev_x, cur_x] 구간을 player 가 지나면서 활성화한 트리거들 반환
@@ -609,7 +662,7 @@ def step_triggers(level: Level, prev_x: float, cur_x: float,
             continue
         t.fired = True
         fired.append(t)
-        _fire_trigger(level, t, active_moves, pending_spawns)
+        _fire_trigger(level, t, active_moves, pending_spawns, player)
     return fired
 
 
@@ -773,17 +826,23 @@ def run_simulation(level: Level,
 
     for f in range(max_frames):
         action = actions[f] if f < len(actions) else False
+        # PLAYER_CONTROL stop_jump 시 입력 차단 (decomp 검증)
+        if p.jump_blocked:
+            action = False
+            p.jump_blocked = False  # 1 프레임만 — 진짜 GD 는 hold 동안 차단이지만 sim 단순화
         prev_x = p.x
-        step_physics(p, jump=action)
-        # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain)
-        step_triggers(level, prev_x, p.x, active_moves, pending_spawns)
+        # TIMEWARP 영향: dt = DT * timewarp (decomp 검증)
+        eff_dt = DT * p.timewarp
+        step_physics(p, jump=action, dt=eff_dt)
+        # X 기반 트리거 활성화 + 효과 (toggle/move/spawn chain + gravity/teleport/timewarp)
+        step_triggers(level, prev_x, p.x, active_moves, pending_spawns, player=p)
         # Collision 트리거 (1815) — player vs collision_block enter/exit
         collision_blocks = step_collision_triggers(level, p, collision_blocks,
                                                     active_moves, pending_spawns)
         # delay 카운트다운 + Spawn chain
-        update_pending_spawns(level, pending_spawns, active_moves, DT)
+        update_pending_spawns(level, pending_spawns, active_moves, eff_dt, player=p)
         # 진행 중 Move 보간 갱신
-        update_active_moves(active_moves, DT)
+        update_active_moves(active_moves, eff_dt)
         # Pad/Orb/Portal/Modifier 효과 (player 와 닿은 거)
         step_dispatch(p, level)
         hit_id = step_collision(p, level)
