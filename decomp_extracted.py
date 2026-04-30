@@ -612,6 +612,38 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+TIMEWARP_FORMULA = """
+27차 — TIMEWARP 트리거 (case 0x78f=1935) 정밀 식 추출:
+
+updateTimeWarp (0x236150, 28줄):
+  fVar3 = clampf(param_2, DAT_140622a10, DAT_140622e58)
+        = clampf(param_2, 0.1, 2.0)   ★ 시간 변형 범위
+  layer[0x66*8 = 0x330] = fVar3   (m_timeWarp value)
+  layer[0x334] = 0  (queued cleared)
+  if (timeWarp != 1.0):
+      vfunc 0x4f8 (some apply hook)
+
+applyTimeWarp (0x2361a0, 18줄):
+  layer[0x338] = newWarp
+  CCDirector.scheduler.timeScale = newWarp
+  → 모든 update/physics/animation 가 timeWarp 배 가속/감속
+
+핵심:
+- 범위: 0.1 (10x slow) ~ 2.0 (2x fast)
+- 1.0 = 정상
+- 적용 = cocos2d::CCDirector::scheduler::timeScale 변경
+- 영향: player physics, triggers, animations 모두
+
+시뮬 통합:
+- 매 프레임 dt *= layer.timeWarp (현재 0.0167 → 0.00167 ~ 0.0334)
+- 또는 player.dt *= timeWarp 적용
+- 모든 트리거 fire timing, player velocity update 도 영향
+
+핵심 발견: TIMEWARP 가 simulation 정확도에 큰 영향.
+Every End 같은 demon level 은 자주 timewarp 사용.
+"""
+
+
 FOLLOW_ZOOM_NOTES = """
 26차 — FOLLOW_PLAYER_Y + ZOOM_CAMERA 분석:
 
