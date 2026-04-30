@@ -513,6 +513,56 @@ Collision 트리거 (1815) 등록 → 발동 전체 흐름:
 # 자세한 분석은 다음 단계.
 
 
+# =============================================================================
+# 8차: Spider 물리 + Robot 헬퍼 함수 (모드별 물리)
+# =============================================================================
+
+SPIDER_PHYSICS_FUNCS = {
+    0x394340: ("spiderTestJump",         22,
+               "Spider 점프 trigger — 점프 가능한 위치인지 체크"),
+    0x3943f0: ("spiderTestJumpInternal", 494,
+               "★ Spider 진짜 점프 처리 — instant teleport (위/아래 즉시 이동)"),
+    0x395170: ("playSpiderDashEffect",   201, "Spider dash 시각 effect (화살표 trail)"),
+    0x3a14d0: ("playDynamicSpiderRun",   106, "Spider 달리기 애니메이션"),
+}
+
+ROBOT_PHYSICS_FUNCS = {
+    # Robot 은 separate jump 함수 없음 — updateJump (0x38b900) 안에서 m_isRobot 분기로 처리
+    0x39b6f0: ("toggleRobotMode",        139, "Robot 모드 enter/exit"),
+    0x39be30: ("playerJump_init_39be30", 16,  "점프 변수 초기화 (param=0x1b mode 코드)"),
+    0x398860: ("robotJumpRelated_398860",76,  "Robot 토글 후 호출 — jump charge 관련"),
+    0x3961c0: ("robotJumpRelated_3961c0",137, "Robot 토글 후 호출 — animation speed 등"),
+    0x3a10e0: ("updateRobotAnimationSpeed", 179, "Robot animation speed 업데이트"),
+}
+
+PHYSICS_MODE_TRANSITIONS = {
+    0x212c20: ("switchToRobotMode",  34, "PlayLayer 측 Robot mode 전환 (portal 호출)"),
+    0x212d10: ("switchToSpiderMode", 34, "PlayLayer 측 Spider mode 전환"),
+}
+
+ROBOT_SPIDER_PHYSICS_NOTES = """
+Robot/Spider 물리 메커니즘 분석 결과:
+
+Robot:
+- 점프는 charge-based — 점프 누르고 있으면 더 높이 점프 (max charge 시간 = ?)
+- 물리 함수는 별도 X — updateJump (0x38b900) 안에 m_isRobot (0x9bd) 분기로 처리됨
+- toggleRobotMode 가 m_isRobot=1 set + jump 변수 초기화 (param_1[0x106] = 1.5)
+- 추가 robot-only 함수: updateRobotAnimationSpeed (0x3a10e0, 179줄)
+
+Spider:
+- 점프는 INSTANT TELEPORT — 천장/바닥까지 즉시 점프 (대시처럼)
+- spiderTestJumpInternal (0x3943f0, 494줄) = 핵심 함수
+  - ray-cast 위/아래 → 첫 충돌 위치까지 player 위치 점프
+  - 중간 hazard 가 있으면 사망 (대시 도중 spike 만나면 죽음)
+- spiderTestJump (0x394340) = wrapper (인풋 받으면 호출)
+- spiderTestJumpInternal 분석은 다음 단계 (494줄 — 작지 않음)
+
+시뮬 통합 우선순위:
+- Spider 의 ray-cast jump 가 시뮬 정확도에 직접 영향 — 다음 라운드 분석
+- Robot 의 charge jump 는 updateJump 안의 분기 추출 필요
+"""
+
+
 COLLISION_TRIGGER_MECHANISM = """
 실제 collision 트리거 (1815) 발동 흐름:
 
