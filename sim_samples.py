@@ -38,7 +38,8 @@ def sim_one(gmd_path: str, name: str) -> dict:
     end_blocks = end_x / BLOCK_SIZE   # 30 units = 1 block
 
     t1 = time.time()
-    res = run_simulation(level, actions=[False] * 60 * 120)   # 최대 120초
+    # 600s budget — Every End 같은 큰 레벨도 끝까지 보려고 충분히
+    res = run_simulation(level, actions=[False] * 60 * 600)
     t_sim = time.time() - t1
 
     return {
