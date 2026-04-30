@@ -396,6 +396,9 @@ class Player:
     timewarp: float = 1.0
     # PLAYER_CONTROL trigger 1932 — 입력 차단
     jump_blocked: bool = False
+    # Mini mode (size portal 17 normal / 18 mini, decomp 검증):
+    #   히트박스 0.6× scale, jump_velocity 0.8×
+    is_mini: bool = False
     # Item/Counter system (decomp 검증, type 1-5)
     counters: dict[int, int]    = field(default_factory=dict)   # type 1: Counter
     timers:   dict[int, float]  = field(default_factory=dict)   # type 2: Timer
@@ -418,8 +421,10 @@ def step_physics(p: Player, jump: bool, dt: float = DT) -> None:
         raise NotImplementedError(f"mode={p.mode} 미구현")
 
     # 점프 임펄스 (중력 방향 따라 부호 반전)
+    # mini 면 0.8× jump velocity (physics_constants 검증)
     if jump and p.on_ground:
-        p.vy = CUBE_JUMP_VY * p.gravity_dir
+        jump_v = CUBE_JUMP_VY * (0.8 if p.is_mini else 1.0)
+        p.vy = jump_v * p.gravity_dir
         p.on_ground = False
 
     # 중력
@@ -908,7 +913,15 @@ def _apply_dispatch_action(p: Player, o: SimObject, action: str,
         p.mode = args["mode"]
         return
     if action == ACTION_TOGGLE_MINI:
-        # mini 처리 미구현 (히트박스 0.6 스케일 등)
+        # Mini portal: 17=normal, 18=mini (decomp + physics_constants 검증)
+        # mini 면 0.6× scale (hitbox + sprite), jump_velocity 0.8×
+        new_mini = bool(args.get("mini", False))
+        if p.is_mini != new_mini:
+            p.is_mini = new_mini
+            # 히트박스 동적 업데이트 — 0.6× scale (cube)
+            scale = 0.6 if new_mini else 1.0
+            p.w = 30.0 * scale
+            p.h = 30.0 * scale
         return
     if action == ACTION_GRAVITY_FLIP:
         # 명시적 flip_to 따라 — flip_to=True 면 반전, False 면 정상
@@ -1547,6 +1560,34 @@ def _test_teleport_trigger():
     print(f"[OK] teleport trigger: instant move to (500, 200)")
 
 
+def _test_mini_mode():
+    """Mini portal (18) → mini=True, hitbox 0.6×, jump 0.8×.
+    Mini portal off (17) → 원래대로.
+    """
+    p = Player(x=0, y=105)
+    assert p.w == 30 and p.h == 30 and not p.is_mini
+
+    # Mini ON
+    _apply_dispatch_action(p, SimObject(obj_id=101, x=0, y=0, rotation=0,
+                                         w=30, h=30, type=18),
+                           ACTION_TOGGLE_MINI, {"mini": True}, None)
+    assert p.is_mini and abs(p.w - 18) < 0.01 and abs(p.h - 18) < 0.01, \
+        f"mini=True 후 (w={p.w}, h={p.h}, mini={p.is_mini})"
+
+    # 점프 시 vy = 0.8 * normal (단, 1프레임 안에 gravity 도 적용됨)
+    p.on_ground = True
+    step_physics(p, jump=True)
+    expected = CUBE_JUMP_VY * 0.8 - CUBE_GRAVITY * DT
+    assert abs(p.vy - expected) < 1, f"mini jump vy={p.vy:.0f}, 기대={expected:.0f}"
+
+    # Mini OFF
+    _apply_dispatch_action(p, SimObject(obj_id=99, x=0, y=0, rotation=0,
+                                         w=30, h=30, type=17),
+                           ACTION_TOGGLE_MINI, {"mini": False}, None)
+    assert not p.is_mini and p.w == 30 and p.h == 30
+    print(f"[OK] mini mode: hitbox 0.6× + jump 0.8× ON/OFF 검증")
+
+
 def _test_touch_trigger():
     """TouchTrigger (1611) — jump 입력 시 target_group fire."""
     objs = [SimObject(obj_id=1, x=15+i*30, y=15, rotation=0, w=30, h=30, type=0)
@@ -1676,4 +1717,5 @@ if __name__ == "__main__":
     _test_item_compare()
     _test_scale_rotate()
     _test_touch_trigger()
+    _test_mini_mode()
     _test_ring_orb_yellow()
