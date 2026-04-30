@@ -42,6 +42,8 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `opengd_extracted.py` — OpenGD에서 추출한 게임 메커닉 데이터
 - `gdp_extracted.py` — camila314/gdp GD 2.2 디컴파일 결과 (물리 상수, 슬로프/충돌 로직)
 - `bindings_extracted.py` — geode-sdk/bindings 2.2081 (PlayerObject/GameObject 멤버 구조, enum)
+- `decomp_extracted.py` — **GD.exe Ghidra 직접 추출** (collidedWithObjectVariant + landing
+  + DAT 상수 30+ + PlayerObject 멤버 오프셋 검증, 2026-04-30 갱신)
 - `analyze_music.py` — 음악 분석 (BPM/비트/섹션/에너지, librosa 기반)
 - `simulator.py` — 시뮬레이터 (Player·물리·AABB·가상 floor·시뮬 루프 + Toggle/Move/Spawn
   + 회전(axis-aligned)·스케일·flip·no_touch·z_layer 처리. 17 단위 테스트 통과)
@@ -110,7 +112,7 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 | 데이터셋 | 5% | 9개만 (수백~수천 필요) |
 | 시뮬레이터 | 60% | 큐브+OpenGD 정밀+회전/스케일/no_touch/z_layer/flip 적용. 트리거 동작 깊이 부족 |
 | 트리거 catalog | 70% | 80개 분류·키매핑. 6 verified / 74 inferred. 동작 함수 3개만 구현 |
-| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 21 함수 디컴파일 (D:\GhidraProjects\decomp/) |
+| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 37 함수 + 30 DAT 상수 (D:\GhidraProjects\decomp/) |
 | 생성 시스템 | 0% | 아직 시작 안 함 |
 
 ### 완료된 거
@@ -213,46 +215,62 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - 음악 분석 ✅ → 게임 데이터 추출(hitboxes/level_start) ✅ → 시뮬레이터 큐브 MVP ✅
   → 트리거 표면 구현(Toggle/Move/Spawn) ✅ → OpenGD 정밀 동작 통합(`trigger_logic.py`) ✅
   → 회전/스케일/flip/no_touch/z_layer 적용 ✅ → 트리거 catalog 80개(`trigger_catalog.py`) ✅
-  → **Ghidra 환경 + GD.exe 디컴파일 21 함수 추출 ✅ (현재 도달점)**
+  → Ghidra 환경 + GD.exe 디컴파일 21 함수 ✅
+  → **3차 추출 ✅ — 37 함수 + 30 DAT 상수 + `decomp_extracted.py` 정리 (현재 도달점)**
 
 핵심 깨달음 — RobTop GD 코드는 **wrapper-heavy 구조**:
 - `EffectGameObject::triggerActivated` (0x4a8790, 11줄) = wrapper. 멤버 플래그만 set
-- `processCommands` (0x239c60) = wrapper → `processTriggers` (0x231d10) = queue 처리
-  → `FUN_1402338e0` (진짜 트리거 발동, 미디컴파일)
+- `processCommands` (0x239c60) → `processTriggers` (0x231d10) → `FUN_1402338e0` (0x2338e0)
+  ★ **이건 INPUT 이벤트 dispatcher (jump/left/right press/release) 였음 — 80 트리거 dispatch 아님**
 - `collidedWithObject` (0x3919b0) = wrapper → `collidedWithObjectInternal` (0x38f140) = wrapper
   → **`collidedWithObjectVariant` (0x391a70, 1234줄) = 진짜 충돌 처리** ⭐
+- 80개 트리거 진짜 case 분기는 **`customObjectSetup` (0x4a8ad0, .gmd 키 → 멤버 매핑)** +
+  `updateGroups`/`updateColors`/`updateMoveTriggers` 안에 분산 — **단일 점이 아님**
+
+3차 추출에서 검증 (`decomp_extracted.py` 에 정리):
+- DAT 상수 30+개 (collision tolerance 5/6/10/15, landing velY threshold ±1/±4/±8/±14,
+  X-displacement 7.5/150/300/450, position snap 1/1000, etc.)
+- collidedWithObjectVariant 충돌 룰: tolerance 결정 → velY 계산 → 분기 (ground/ceiling/squish/kill)
+- landGround event broadcast 로직 (Y velocity → event 1~5, X displacement → event 0x41~0x44)
+- PlayerObject 멤버 오프셋 25개 검증 (m_isUpsideDown=0x9bf, m_yVelocity=0x134 등)
+- Trigger queue 구조 2개 (input action queue + effect object queue)
 
 즉 한 함수 디컴파일로 끝나지 않고 **함수 chain 5~10단계 + 각 함수 1000+줄 분석** 해야
 진짜 동작 정확히 추출됨. 80개 트리거 + 모든 메커니즘 정밀화 = **수주~수개월 작업**.
 
 ### 다음 세션에서 할 일 (디컴파일 분석 계속)
 
-`D:\GhidraProjects\` 에 Ghidra 12.0.4 + GD.exe 분석 + 21 함수 디컴파일 결과.
+`D:\GhidraProjects\` 에 Ghidra 12.0.4 + GD.exe 분석 + **37 함수** 디컴파일 결과.
 - `D:\GhidraProjects\GD\GeometryDash.exe` — 분석 끝난 Ghidra 프로젝트 (재분석 불필요)
-- `D:\GhidraProjects\DumpFunctions.java` — 함수 추가하면 자동 디컴파일 헤드리스 실행 가능
-- `D:\GhidraProjects\decomp\*.c` — 21 함수 디컴파일 결과
+- `D:\GhidraProjects\DumpFunctions.java` / `DumpFunctions2.java` / `DumpFunctions3.java` —
+  함수 리스트 추가 후 헤드리스 실행 (`/d/ghidra_12.0.4_PUBLIC/support/analyzeHeadless.bat`)
+- `D:\GhidraProjects\DumpDATs.java` — DAT 상수 값만 dump (float/double/int/bytes)
+- `D:\GhidraProjects\decomp\*.c` — 37 함수 디컴파일 결과
+- `D:\GhidraProjects\decomp\_DAT_constants.txt` / `_DAT_constants_v2.txt` — 30+ DAT 값
+- `decomp_extracted.py` — Python 측 정리 결과 (시뮬레이터에서 import 해서 쓸 수 있음)
 
-**다음 작업 순서**:
+**다음 작업 순서** (재정렬 — 3차 추출 후 깨달음 반영):
 
-1. **`collidedWithObjectVariant` (0x391a70, 1234줄) 분석** — 진짜 충돌 룰 (mod tolerance,
-   inner box, slope, snap 모두 여기). DAT_140622b08 (14번 사용) 등 상수 의미 추출 필요.
-   호출하는 sub-function 16개 (FUN_14017ab00, FUN_140216090, FUN_140388d10 등) 도 chain 따라가기.
-2. **`FUN_1402338e0` 디컴파일** — 진짜 트리거 발동 (processTriggers 가 호출).
-   80개 트리거 case 분기가 여기 있을 가능성 큼.
-3. **`customObjectSetup` (0x4a8ad0, 2200줄)** — `.gmd` 키 → 멤버 매핑 (16+ case 분기 발견됨,
-   case 0x716/0x717/0x718/... = ID 1814/1815/1816/...). 80개 트리거 모든 키 매핑 추출.
-4. **`update` (GJBaseGameLayer, 0x237850, 812줄)** — 매 프레임 메인 루프.
-   Move/Rotate 효과 적용이 여기 inline 일 가능성.
-5. 추출 결과 → `trigger_logic.py` / `opengd_extracted.py` / `gdp_extracted.py` 정밀화
-   + `trigger_catalog.py` 의 inferred → verified 표시
-6. 최종 `simulator.py` 에 통합 → 시뮬 정확도 측정 (4 샘플 레벨 비교)
+1. **`customObjectSetup` (2200줄) 의 case 0x716/0x717/0x718/0x778/0x779/0x78b-0x78f/0x812
+   분석** — 각 트리거의 .gmd 키 → 멤버 offset 매핑. 패턴이 일정 (atoi/atof로 string parse,
+   member에 store) 이라 자동 추출 스크립트 작성 가능.
+2. **`updateGroups` (629줄) 분석** — Move 트리거 효과의 실제 적용. group iterate +
+   position 적분 (easing) 이 여기일 것.
+3. **`updateColors` (661줄) 분석** — Color/Pulse/BG/Tint 트리거 효과. LayerGradient 처리.
+4. **`collisionInner_2137f0` (564줄) 분석** — 매 프레임 collision detection 메인 루프.
+   collidedWithObjectVariant 호출자 — 어떤 오브젝트 vs player 호출하는지 룰.
+5. **`PlayerObject_savePositionState_396650` (183줄), `postCollideTeardown_3916e0` (112줄)
+   분석** — 충돌 후 처리.
+6. 추출 결과 → `decomp_extracted.py` 확장 + `trigger_catalog.py` verified 표시
+7. 최종 `simulator.py` 에 통합 → 시뮬 정확도 측정 (4 샘플 레벨 비교)
 
 **작업 효율 팁**:
-- 1234줄·2200줄 다 한 번에 안 읽고, 분기 패턴 (case/goto/if return) + DAT 상수 + sub-function
-  호출만 grep 으로 추출해서 구조 파악
-- DAT_xxx 상수 값은 Ghidra GUI 에서 주소 점프 또는 Listing view 로 확인
-- 멤버 변수 오프셋 (param_1+0xb01 등) 은 Geode `bindings/PlayerObject.hpp`,
-  `EffectGameObject.hpp` 의 멤버 순서로 매칭
+- 1234줄·2200줄 다 한 번에 안 읽고, **switch/case 자동 추출** + DAT 상수 + sub-function 호출만
+  grep 으로 추출해서 구조 파악
+- DAT_xxx 상수 값은 `DumpDATs.java` 에 주소 추가하면 한 번에 다 dump (float/double/i32/bytes)
+- 멤버 변수 오프셋은 `decomp_extracted.PLAYER_OFFSETS` 참조 (25개 검증)
+- 함수 chain 따라갈 때 새 wrapper 발견하면 `DumpFunctions3.java` 의 TARGETS 에 추가
+- 한 라운드 헤드리스 실행 = 약 60초 (이미 분석된 프로젝트 재사용)
 
 **대안 — Geode 모드 실측 (병행 가능)**:
 디컴파일이 너무 깊으면 모드에 매 프레임 player.x/y/vy + 활성 트리거 + 그룹 상태 dump
