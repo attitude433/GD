@@ -268,24 +268,90 @@ TRIGGER_DISPATCH_BASE = {
     # 나머지 ~95 case: 디컴파일 src 590-985 라인 참조
 }
 
-# Spawn(0x4f4=1268), Pickup, Animate, Camera 등 base 에 없는 case = 파생 클래스 override
-TRIGGER_DISPATCH_DERIVED_ADDRS = [
-    0x4b9e10,  # 분석 실패 (주소 불일치 가능)
-    0x4bb210,  # 217 lines
-    0x4bd820,  # 110 lines
-    0x4c23f0,  # 161 lines
-]
+# 15개 triggerObject 구현 (Geode 2.2081 bindings 확인 — class별 override)
+# 모두 dump 완료 (D:/GhidraProjects/decomp/triggerObject_*.c)
+TRIGGER_DISPATCH_DERIVED_ADDRS = {
+    0x4a5f30: "EffectGameObject (BASE) — 105 case, Move/Color/Pulse/Toggle 등",
+    0x4b41e0: "(73줄)",
+    0x4b4870: "(177줄)",
+    0x4b88a0: "(41줄)",
+    0x4b91f0: "(35줄)",
+    0x4b9e10: "FAIL — function not found at this addr",
+    0x4bb210: "(217줄) — TOUCH 트리거 (case 0x64b)",
+    0x4bc180: "(1302줄) — base 와 거의 동일 case 구조 (서브클래스 override)",
+    0x4bccd0: "(44줄)",
+    0x4bd820: "(110줄) — case 0x77a/0x77c/0x7df/0x7e0",
+    0x4bf1e0: "(47줄)",
+    0x4bfcf0: "(60줄)",
+    0x4c23f0: "(161줄)",
+    0x4c3320: "(161줄)",
+    # 추가: GameObject::triggerObject = inline (= 6131:6131 bindings)
+}
+
+# Spawn(0x4f4 = 1268) 미발견 — 어떤 triggerObject 에도 case 0x4f4 없음.
+# 가설: SpawnTrigger 가 별도 mechanism (trigger queue 직접 호출) 또는 inline 호출.
+# spawnGroup 함수 (0x21ab80) 자체는 알려져 있고 caller 분석 필요.
+SPAWN_TRIGGER_BLOCKER = """
+다음 라운드에서 해야 할 것:
+1. spawnGroup (0x21ab80) 의 caller 들을 찾아 Spawn 트리거 발동 위치 식별
+2. customSetup 에서 0x4f4 가 m_isActiveTrigger=1 으로 설정됨 → activeTrigger 처리
+   loop 가 어디서 돌아가는지 (update() 의 어떤 sub-call 인지) 추적
+"""
 
 # 알려진 효과 함수 주소 (이미 있는 것들 + triggerObject 가 호출하는 것들)
 TRIGGER_EFFECT_FUNCTIONS = {
     "spawnGroup":  0x21ab80,
     "toggleGroup": 0x223bc0,
     "addToGroup":  0x223fd0,
-    "MoveEffect":  0x21ea40,    # NEW — Move trigger 진짜 효과
-    "ColorSet":    0x260c40,    # NEW — Color trigger 진짜 효과
-    "PulseEffect": 0x260a70,    # NEW — Pulse trigger 진짜 효과
+    "MoveEffect":  0x21ea40,    # Move trigger 진짜 효과 (208 줄, decomp 완료)
+    "ColorSet":    0x260c40,    # Color trigger 진짜 효과 (212 줄, 시각만 — 시뮬 무관)
+    "PulseEffect": 0x260a70,    # Pulse trigger (48 줄, 시각만)
+    "MoveActionMgr_addAction": 0x25c700,  # Move trigger 가 duration > 0 일 때 호출 (보간)
     # GRAVITY, COLLISION 은 inline 작은 코드라 별도 함수 없음
 }
+
+# Move 트리거 효과 (FUN_14021ea40, decomp 분석):
+MOVE_TRIGGER_EFFECT = """
+Move trigger (case 0x385) → FUN_14021ea40(layer, this_trigger):
+
+param_2 (this_trigger) 멤버 offsets:
+  +0x5e0  m_moveOffset (CCPoint)
+  +0x5bc  m_duration (float)
+  +0x5c8  m_targetGroupID (int)
+  +0x5cc  m_centerGroupID (int)
+  +0x5e8  m_easing (int)
+  +0x5ec  m_easingRate (float)
+  +0x5f0  m_lockPlayerX (char)
+  +0x5f1  m_lockPlayerY (char)
+  +0x5f2/0x5f3  추가 lock variants
+  +0x5f4  m_useDirection (char)
+  +0x5fc  m_moveX (uint = float bits)
+  +0x600  m_moveY (uint = float bits)
+  +0x605  m_useDirectionMode (char)
+  +0x608  m_centerGroupID2 (int)
+  +0x610  m_useTarget (char)
+  +0x611  m_smallStepMode (char) — instant per-frame move (duration 무시)
+  +0x698  m_uniqueID
+  +0x6a4  m_targetIsP1 (char)
+  +0x6a5  m_targetIsP2 (char)
+
+3가지 분기:
+  1. m_useTarget=1 → 큐에 enqueue (별도 follow 처리)
+  2. m_smallStepMode=0 → MoveActionMgr 에 duration 보간 액션 추가
+     (call FUN_14025c700)
+  3. m_smallStepMode=1 → 즉시 group 전 멤버 위치에 dX/dY 추가
+     - obj+0x3b8 (X double) += dX
+     - obj+0x3c0 (Y double) += dY
+     - obj+0x4d0/0x4d4 (rendered float X/Y) 갱신
+     - obj+0x368 dirty flag = 0x101
+     - obj+0x351 dirty flag2 = 0x101
+
+GameObject 위치 멤버:
+  +0x3b8: m_position.x (double)
+  +0x3c0: m_position.y (double)
+  +0x4d0: m_renderPosX (float)
+  +0x4d4: m_renderPosY (float)
+"""
 
 
 # =============================================================================
