@@ -1,4 +1,4 @@
-"""4 샘플 레벨에 시뮬 돌려서 결과/통계 비교.
+"""4 샘플 레벨에 시뮬 돌려서 결과/통계 비교 — no-jump + greedy AI 모두.
 
 목적: Collision 트리거 (1815) 인프라 추가 후 Every End 같이 헤비한 레벨이
 얼마나 더 현실적으로 동작하는지 측정.
@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from simulator import (load_level, run_simulation, BLOCK_SIZE)
+from jump_ai import run_with_greedy_ai
 
 
 SAMPLES = [
@@ -42,6 +43,11 @@ def sim_one(gmd_path: str, name: str) -> dict:
     res = run_simulation(level, actions=[False] * 60 * 600)
     t_sim = time.time() - t1
 
+    # Greedy AI 도 시도
+    t2 = time.time()
+    ai_res = run_with_greedy_ai(level, max_frames=60 * 600)
+    t_ai = time.time() - t2
+
     return {
         "name": name,
         "n_obj": n_obj,
@@ -60,6 +66,12 @@ def sim_one(gmd_path: str, name: str) -> dict:
         "death_obj_id": res.death_obj_id,
         "t_load_s": t_load,
         "t_sim_s": t_sim,
+        # AI 결과
+        "ai_cleared": ai_res['cleared'],
+        "ai_final_blocks": ai_res['final_x'] / BLOCK_SIZE,
+        "ai_jumps": ai_res['jumps'],
+        "ai_death_obj": ai_res.get('death_obj_id'),
+        "t_ai_s": t_ai,
     }
 
 
@@ -69,11 +81,12 @@ def fmt(r: dict) -> str:
         if r["death_frame"] is not None
         else f"TIMEOUT @ {r['final_blocks']:.0f}b"
     )
-    return (f"[{r['name']:>22}]  obj={r['n_obj']:>6}  trig={r['n_trig']:>5}  "
-            f"coll_trig={r['n_collision_trig']:>4} (idx={r['n_collision_indexed']:>4})  "
-            f"coll_block={r['n_collision_block_obj']:>4}  "
-            f"len={r['end_blocks']:>5.0f}b  → {r['final_blocks']:>5.1f}b  "
-            f"({state})  load={r['t_load_s']:.1f}s sim={r['t_sim_s']:.1f}s")
+    ai_state = "CLEARED" if r['ai_cleared'] else (
+        f"DIED ({r['ai_final_blocks']:.0f}b, obj={r['ai_death_obj']})"
+    )
+    return (f"[{r['name']:>22}]  len={r['end_blocks']:>5.0f}b\n"
+            f"  no-jump:  → {r['final_blocks']:>5.1f}b   ({state})  sim={r['t_sim_s']:.1f}s\n"
+            f"  greedyAI: → {r['ai_final_blocks']:>5.1f}b   ({ai_state})  jumps={r['ai_jumps']:>4}  ai={r['t_ai_s']:.1f}s")
 
 
 def main():
