@@ -612,6 +612,58 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+PULSE_TRIGGER_DETAILED = """
+36차 — Pulse 트리거 (case 0x3ee=1006) 정밀 식 (FUN_140260c40, 212줄):
+
+ColorAction 구조 (72 bytes / 0x48 per entry, in colorMgr 의 vector):
+  [+0x00] state (0=active, 1=stopped)
+  [+0x04] color_R (uint)
+  [+0x08] color_G (uint)
+  [+0x0c] color_B (uint)
+  [+0x14] target_channel_id
+  [+0x1c] secondary_color_id (uint16)
+  [+0x20] opacity (uint, 0-255)
+  [+0x24-0x2c] copy color RGBA bits
+  [+0x34] target_player_index
+  [+0x38] blending mode (uint8)
+  [+0x3c] fade_in_time
+  [+0x40] hold_time
+  [+0x44] fade_out_time
+  [+0x30] current progress (0-1)
+  [+0x38] elapsed time
+
+매 프레임 progress 계산:
+  elapsed += dt
+  if elapsed < fade_in_time:
+      progress = elapsed / fade_in_time           # ramp up
+  elif elapsed <= fade_in + hold_time:
+      progress = 1.0                                # full pulse
+  elif elapsed <= fade_in + hold + fade_out:
+      progress = 1.0 - (elapsed - fade_in - hold) / fade_out  # ramp down
+  else:
+      progress = 0  # done, remove
+
+Color 적용 (별도 함수 매 프레임):
+  channel.current_color = base_color * (1-progress) + pulse_color * progress
+
+디자인 단계 통합:
+- BPM 맞춰 fade_in=0.05, hold=0.2, fade_out=0.05 (4분음표 박자)
+- 채널별 다른 색상 (R/G/B 분리) 펄스
+- color_id 0 = 해당 채널 base 색상 사용
+
+.gmd 키 (param_1 부터):
+- param_2: target_channel_id
+- param_3: hold_time (param_3 <= 0 면 즉시)
+- param_4: pulse RGB (24bit)
+- param_5: fade_in
+- param_6: fade_out
+- param_7: copy_color_id
+- param_8: secondary_color_id
+- param_10: opacity
+- param_11/12: blending/blendKind
+"""
+
+
 DERIVED_TRIGGER_OVERRIDES = """
 35차 — 모든 EffectGameObject 파생 클래스 triggerObject override 분류:
 
