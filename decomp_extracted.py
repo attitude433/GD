@@ -612,6 +612,53 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+CAMERA_TRIGGERS_DETAILED = """
+39차 — Camera 트리거 5개 정밀 식 (TouchTriggerGameObject 0x4bd820):
+
+★ STATIC_CAMERA (case 0x77a=1914):
+  flag (0x740) 분기:
+    0 (lock_to_group): FUN_14023ee40(layer, center_group_id=0x5cc,
+                          mode_x=mode!=2, mode_y=mode!=1,
+                          follow_obj=0x741, follow_id=0x744,
+                          duration=0x5bc, easing=0x5e8, ease_rate=0x5ec,
+                          smooth_velocity=0x74c, velocity_mod=0x750)
+    1 (lock_to_player): FUN_14023f670(layer, mode_x, mode_y,
+                          duration, easing, ease_rate, ..., dual_mode=0x754)
+  mode (0x5f8): 1=X only, 2=Y only, else=both axes
+
+★ CAMERA_MOVE (case 0x77c=1916):
+  mode (0x5f8): 1=Y only, 2=X only, else=both
+  if NOT mode==2: FUN_140235f70(layer, X_amount=0x5e0, duration, easing, ...)
+  if NOT mode==1: FUN_140236010(layer, Y_amount=0x5e4, duration, easing, ...)
+
+★ MODE_SWITCH_CAMERA (case 0x7df=2015):
+  vfunc 0x4d0(player, mode_id=0x618, force_flag=0x620, no_portal=0x605,
+              duration, easing, ease_rate)
+  → game mode 전환 (Ship/Ball/UFO/etc.) — 카메라 효과 같이
+
+★ CAMERA_FLAG (case 0x80e=2062):
+  subtype (0x748): set 4 가지 카메라 옵션 중 하나:
+    1: param_2 + 0x468 (offset_x_static?)
+    2: param_2 + 0x46c
+    3: param_2 + 0x470 (offset_y_static?)
+    4: param_2 + 0x474
+
+★ ZOOM_CAMERA_NEW (case 0xb6d=2925):
+  active_flag (0x6e4) — set
+  zoom_level (0x6e8): clamp [1.0, 40.0]  (DAT_140622c24, DAT_1406231b0)
+  zoom_x_factor (0x6ec): clamp [0, 1.0]
+  if changed: updateDualGround (모드 전환에 대응)
+
+★ 디자인 단계 통합:
+- 음악 bridge → STATIC_CAMERA (player 잠금, 보스전)
+- 음악 절정 → CAMERA_MOVE (좌우 이동, drop 강조)
+- 비트마다 ZOOM_CAMERA (펄스 zoom in/out)
+- BPM 빌드업 → zoom out gradual
+- BPM 드롭 → zoom in instant (강조)
+- 모드 전환 시 (큐브→ship 등) MODE_SWITCH_CAMERA + zoom 효과
+"""
+
+
 AUDIO_TRIGGERS_DETAILED = """
 38차 — Audio 트리거 3개 (SONG/EDIT_SONG/EDIT_SFX) 정밀 식 추출:
 
