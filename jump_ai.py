@@ -31,32 +31,39 @@ JUMP_MAX_HEIGHT  = JUMP_VY ** 2 / (2 * GRAVITY)    # ≈ 77 u (2.6 b)
 # 충돌 가능 hazard / solid object types
 _HAZARD_TYPES = {2, 47}                # Hazard, AnimatedHazard
 _SOLID_TYPES  = {0, 25, 39}             # Solid, Slope, CollisionObject
+_RING_TYPES   = {11, 12, 13, 29, 32, 35, 37, 38}    # 점프 오브
 
 
 def greedy_jump_decide(p: Player, level: Level, lookahead_units: float = 200.0) -> bool:
     """
-    Greedy 룰: player 앞 lookahead 안에:
-    - hazard (spike) 가 있으면 점프
-    - 단, on_ground 일 때만 (점프 가능 상태)
+    Greedy 룰:
+    1. ring orb 위에 있으면 → 즉시 click (ring 발동)
+    2. on_ground 이고 lookahead 안에 hazard → 점프
     """
-    if not p.on_ground or not p.alive:
+    if not p.alive:
         return False
 
-    # nearby 윈도우 안에서 player 앞쪽 hazard 찾기
+    # 1. Ring orb 위에 있으면 즉시 click (공중에서도 발동 가능)
+    # touched_rings 는 step_ring_check 가 채움 — AI 가 호출하기 전에 채워져야
+    # 하지만 jump_ai 의 main loop 에서 ring_check 가 step_physics 전에 호출됨 → OK
+    if p.touched_rings:
+        return True
+
+    if not p.on_ground:
+        return False
+
+    # 2. lookahead 안에 hazard 찾기
     px = p.x
     for o in level.nearby(px + lookahead_units / 2, margin=lookahead_units):
         if not o.enabled or o.is_passable or o.no_touch or o.z_layer < 0:
             continue
         if o.type not in _HAZARD_TYPES:
             continue
-        # player 보다 앞쪽
         if o.x + o.dx <= px:
             continue
-        # 점프 거리 안 (대략)
         gap = (o.x + o.dx) - px
         if gap > lookahead_units:
             continue
-        # 점프 발동
         return True
     return False
 
@@ -78,21 +85,24 @@ def run_with_greedy_ai(level: Level, max_frames: int = 60 * 600,
     collision_block_pairs: set = set()
     from simulator import step_ring_check, fire_ring_jump, fire_touch_triggers
     for f in range(max_frames):
-        # AI: greedy 점프 결정
-        action = greedy_jump_decide(p, level, lookahead_units=lookahead)
-        if action:
+        if p.jump_blocked:
+            p.jump_blocked = False    # 1프레임만
+            action = False
+            jump_log_skip = True
+        else:
+            # Ring orb buffer 갱신 — AI 가 ring 사용 결정에 필요
+            step_ring_check(p, level)
+            # AI: greedy 결정 (ring 위면 즉시 점프)
+            action = greedy_jump_decide(p, level, lookahead_units=lookahead)
+            jump_log_skip = False
+        if action and not jump_log_skip:
             jump_log.append((f, p.x))
 
-        if p.jump_blocked:
-            action = False
-            p.jump_blocked = False
         prev_x = p.x
         eff_dt = DT * p.timewarp
         p.total_time += eff_dt
         for tid in p.timers:
             p.timers[tid] += eff_dt
-        # Ring orb + Touch trigger (decomp 검증)
-        step_ring_check(p, level)
         ring_fired = False
         if action and p.touched_rings:
             ring_fired = fire_ring_jump(p)
