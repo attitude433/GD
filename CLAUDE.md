@@ -42,8 +42,12 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - `opengd_extracted.py` — OpenGD에서 추출한 게임 메커닉 데이터
 - `gdp_extracted.py` — camila314/gdp GD 2.2 디컴파일 결과 (물리 상수, 슬로프/충돌 로직)
 - `bindings_extracted.py` — geode-sdk/bindings 2.2081 (PlayerObject/GameObject 멤버 구조, enum)
-- `decomp_extracted.py` — **GD.exe Ghidra 직접 추출** (collidedWithObjectVariant + landing
-  + DAT 상수 30+ + PlayerObject 멤버 오프셋 검증, 2026-04-30 갱신)
+- `decomp_extracted.py` — **GD.exe Ghidra 직접 추출** — 80개 트리거 정밀 식 + 86 DAT 상수
+  + 모든 jump 메커니즘 + 7 모드 식 + Item/Counter 시스템 (디자인용 시각/오디오 포함)
+- `parse_custom_object_setup.py` — customObjectSetup 자동 파서 (76 .gmd 키→멤버)
+- `parse_trigger_object.py` — triggerObject case→FUN 자동 매핑
+- `jump_ai.py` — greedy 점프 AI (ring orb 사용 가능, BFS 미구현)
+- `sim_samples.py` — 4 샘플 레벨 자동 시뮬 + 정확도 측정
 - `analyze_music.py` — 음악 분석 (BPM/비트/섹션/에너지, librosa 기반)
 - `simulator.py` — 시뮬레이터 (Player·물리·AABB·가상 floor·시뮬 루프 + Toggle/Move/Spawn
   + 회전(axis-aligned)·스케일·flip·no_touch·z_layer 처리. 17 단위 테스트 통과)
@@ -104,15 +108,16 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 |---|---|---|
 | 입출력 (디코딩/인코딩) | 95% | 왕복 검증 4/4 통과 |
 | ID 사전 | 90% | 4076개, GD 2.2 약 90% 커버 |
-| 물리 (큐브/쉽) | 90% | lily-pi + OpenGD 교차검증 |
-| 물리 (전체 모드) | 70% | 2.2 추가 모드 부분적 |
-| 게임 메커닉 | 80% | 패드/오브/포털 정확 |
-| 충돌 처리 | 90% | 슬로프 로직 + 오브젝트 히트박스 수치 확보 (3744개) |
+| 물리 (큐브) | **95%** | lily-pi + OpenGD + GD.exe 3중 검증 |
+| 물리 (Ship/UFO/Wave/Ball/Robot/Spider/Swing) | 5% | 모드 전환만, 실제 물리 X (식 다 있음, 코드 안 옮김) |
+| 게임 메커닉 (큐브) | **95%** | propellPlayer/ringJump 16 multipliers 검증 + Mini mode |
+| 충돌 처리 | 95% | DAT 30+ 검증 + Mini hitbox |
 | 음악 분석 | 90% | BPM/비트/섹션/에너지, 30개 테스트 통과 |
 | 데이터셋 | 5% | 9개만 (수백~수천 필요) |
-| 시뮬레이터 | 60% | 큐브+OpenGD 정밀+회전/스케일/no_touch/z_layer/flip 적용. 트리거 동작 깊이 부족 |
-| 트리거 catalog | 70% | 80개 분류·키매핑. 6 verified / 74 inferred. 동작 함수 3개만 구현 |
-| Ghidra 디컴파일 환경 | 100% | GD.exe 분석 완료, 199+ 함수 + 70+ DAT + 모든 모드/Item 시스템 식별 (D:\GhidraProjects\decomp/) |
+| 시뮬레이터 (큐브) | **85%** | 12 트리거 + Ring/Touch/Mini/Block-block 통합, 26/26 테스트 |
+| 트리거 catalog | **100%** | 80개 모두 디컴파일 + 분석 (게임플레이 + 디자인) |
+| 점프 AI | 30% | greedy 동작 (ring 사용 가능), BFS/A* 미구현 |
+| Ghidra 디컴파일 환경 | 100% | GD.exe 199+ 함수 + 86+ DAT 추출 (`decomp_extracted.py`) |
 | 생성 시스템 | 0% | 아직 시작 안 함 |
 
 ### 완료된 거
@@ -215,8 +220,12 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - 음악 분석 ✅ → 게임 데이터 추출(hitboxes/level_start) ✅ → 시뮬레이터 큐브 MVP ✅
   → 트리거 표면 구현(Toggle/Move/Spawn) ✅ → OpenGD 정밀 동작 통합(`trigger_logic.py`) ✅
   → 회전/스케일/flip/no_touch/z_layer 적용 ✅ → 트리거 catalog 80개(`trigger_catalog.py`) ✅
-  → Ghidra 환경 + GD.exe 디컴파일 21 함수 ✅
-  → **3차 추출 ✅ — 37 함수 + 30 DAT 상수 + `decomp_extracted.py` 정리 (현재 도달점)**
+  → Ghidra 환경 + GD.exe 디컴파일 199+ 함수 + 86+ DAT ✅
+  → **모든 트리거 메커니즘 100% 분석 + decomp_extracted.py 정리 ✅**
+  → 시뮬레이터 1차 통합 (S1-S5: GRAVITY/TIMEWARP/TELEPORT/PLAYER_CONTROL/Item/SCALE/ROTATE) ✅
+  → **큐브 모드 완성 (C1-C5: Ring orb/TouchTrigger/Mini/Block-block + greedy AI) ✅ (현재 도달점)**
+
+다음: 7 모드 시뮬 + BFS AI + 데이터셋 + 생성 시스템
 
 핵심 깨달음 — RobTop GD 코드는 **wrapper-heavy 구조**:
 - `EffectGameObject::triggerActivated` (0x4a8790, 11줄) = wrapper. 멤버 플래그만 set
@@ -306,50 +315,76 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 - 모드 토글러: 7 (검증 + offset 정정)
 - Collision fire 메커니즘 100% 추출
 
-**시뮬레이터 통합 완료 (S1-S5, 5 commits)**:
+**시뮬레이터 통합 1차 완료 (S1-S5, 5 commits)**:
 - S2: GRAVITY/TIMEWARP/TELEPORT/PLAYER_CONTROL 트리거 통합 ✓
 - S3: ItemEdit/ItemCompare/Counter/Timer 시스템 통합 ✓
 - S4: SCALE/ROTATE 트리거 통합 ✓
 - S5: greedy 점프 AI + 4 샘플 측정 ✓
-- 23/23 unit tests 통과
-- 12 트리거 모두 시뮬에서 처리:
+- 23/23 unit tests 통과 (당시)
+
+**큐브 모드 완성 단계 (C1-C5, 5 commits) — 2026-04-30~05-01**:
+- C1: Ring orb 활성화 (8 종류, decomp 검증 16 multipliers, single-use) ✓
+- C2: TouchTrigger (1611) 활성화 — jump 입력 시 target_group fire ✓
+- C3: Mini mode 구현 — 0.6× hitbox + 0.8× jump_velocity ✓
+- C4: Block-vs-block COLLISION (Every End 14 추가 트리거) ✓
+- C5 partial: greedy AI 가 ring orb 사용 ✓
+- 26/26 unit tests 통과
+
+**큐브 모드 시뮬 — 거의 완성 (85%)**:
+- 12 트리거 모두 처리:
   Move/Toggle/Spawn/COLLISION (그룹) +
   GRAVITY/TIMEWARP/TELEPORT/PLAYER_CONTROL (player) +
   ItemEdit/ItemCompare/Pickup (counter) +
   SCALE/ROTATE (visual+collision)
+- Ring orb 8종 + TouchTrigger
+- Mini mode (size portal 17/18)
+- Block-vs-block COLLISION
+- propellPlayer 16 multipliers (모든 패드/오브 type 정확)
+- 슬로프 충돌, 회전, dx/dy, no_touch, z_layer, flip
+- greedy AI (ring 사용 가능)
+
+**4 샘플 레벨 결과 (greedy AI)**:
+- DeCode: 19.9b/838b (2.4%)
+- Supersonic: 14.2b/1235b (1.1%)
+- iSpy: 3.1b/1435b (0.2%)
+- **Every End: 4480b/4558b (98.3%)** — 자동 portal/pad 잘 동작
 
 **남은 작업**:
-- 7 모드 시뮬 코드 (Ship/UFO/Wave/Ball/Robot/Spider/Swing 물리 — decomp 식 있음)
-- BFS/A* 정밀 점프 AI (greedy 보다 정확)
-- TouchTrigger (1611) — 점프 입력 시 group fire
-- 데이터셋 확장 → 생성 모델
+- 7 모드 물리 (Ship/UFO/Wave/Ball/Robot/Spider/Swing — decomp 식 있음, 코드 안 옮김)
+- BFS/A* 정밀 점프 AI (greedy 한계: spike 너머 못 봄)
+- 데이터셋 확장 → 생성 모델 (본 게임)
 
-**다음 작업 순서** (재정렬 — 4차 추출 후 깨달음 반영):
+**다음 작업 순서** (큐브 완성 후, 우선순위 순):
 
-1. **`customObjectSetup` (2200줄) 의 case 0x716/0x717/0x718/0x778/0x779/0x78b-0x78f/0x812
-   분석** — 각 트리거의 .gmd 키 → 멤버 offset 매핑. 패턴이 일정 (atoi/atof로 string parse,
-   member에 store) 이라 자동 추출 스크립트 작성 가능.
-2. **`updateGroups` (629줄) 분석** — Move 트리거 효과의 실제 적용. group iterate +
-   position 적분 (easing) 이 여기일 것.
-3. **`updateColors` (661줄) 분석** — Color/Pulse/BG/Tint 트리거 효과. LayerGradient 처리.
-4. **`collisionInner_2137f0` (564줄) 분석** — 매 프레임 collision detection 메인 루프.
-   collidedWithObjectVariant 호출자 — 어떤 오브젝트 vs player 호출하는지 룰.
-5. **`PlayerObject_savePositionState_396650` (183줄), `postCollideTeardown_3916e0` (112줄)
-   분석** — 충돌 후 처리.
-6. 추출 결과 → `decomp_extracted.py` 확장 + `trigger_catalog.py` verified 표시
-7. 최종 `simulator.py` 에 통합 → 시뮬 정확도 측정 (4 샘플 레벨 비교)
+### 1차 — 시뮬 정확도 향상 (1-2일)
+1. **BFS 점프 AI** (`jump_ai.py`) — greedy 한계 (lookahead 1프레임)
+   - 매 프레임 (jump=T/F) × N프레임 lookahead 탐색
+   - 점프 최적 sequence 찾기 → 데이터셋 자동 클리어 가능
+2. **샘플 레벨 정확도 검증** — Every End 의 4480b 도달이 실제 게임 동작과 같은지 확인
+   - Geode 모드로 게임에서 실측 vs 시뮬 trace 비교
 
-**작업 효율 팁**:
-- 1234줄·2200줄 다 한 번에 안 읽고, **switch/case 자동 추출** + DAT 상수 + sub-function 호출만
-  grep 으로 추출해서 구조 파악
-- DAT_xxx 상수 값은 `DumpDATs.java` 에 주소 추가하면 한 번에 다 dump (float/double/i32/bytes)
-- 멤버 변수 오프셋은 `decomp_extracted.PLAYER_OFFSETS` 참조 (25개 검증)
-- 함수 chain 따라갈 때 새 wrapper 발견하면 `DumpFunctions3.java` 의 TARGETS 에 추가
-- 한 라운드 헤드리스 실행 = 약 60초 (이미 분석된 프로젝트 재사용)
+### 2차 — 7 모드 시뮬 (1주)
+모든 식 `decomp_extracted.py` 에 있음, 코드 옮기기만:
+- Ship: vy 가속 0.7×, jump_hold +1.35×
+- UFO: clampf X-vel ±5
+- Wave: 45° 각도 (mini 60°)
+- Ball: 클릭 시 중력 반전 + 점프 0.6×
+- Robot: charge jump (decomp 식 있음)
+- Spider: instant teleport (100b ray-cast — `spiderTestJumpInternal` 식)
+- Swing: 중력 반전 (스윙코프터 2.2)
 
-**대안 — Geode 모드 실측 (병행 가능)**:
-디컴파일이 너무 깊으면 모드에 매 프레임 player.x/y/vy + 활성 트리거 + 그룹 상태 dump
-추가 → 게임 30초 → 진짜 동작 데이터 직접 측정. 한 세션 안에 큰 진전.
+### 3차 — 데이터셋 + 생성 시스템 (수주~수개월, 본 게임)
+1. **데이터셋 확장** — GDBrowser API 로 인기 레벨 100+개 수집
+2. **레벨 분석** — BPM ↔ 점프 패턴 상관관계 추출
+3. **레이아웃 생성기** — 음악 분석 → 큐브 패턴 (룰 베이스 → LLM → 학습)
+4. **디자인 생성기** — `decomp_extracted` 의 모든 시각/오디오 트리거 활용
+   (Pulse/GRADIENT/Camera/Particle/SONG/EDIT_SFX 등 — 식 다 있음)
+
+### 작업 효율 팁
+- 디컴파일은 거의 끝남 — 더 추출할 게 별로 없음
+- 시뮬 통합은 패턴이 정해져 있음: TriggerInstance 필드 → _build_trigger 파싱 → _fire_trigger 분기 → 단위 테스트
+- 모든 식은 `decomp_extracted.py` 의 docstring 에 정리됨
+- `simulator.py` 의 _test_* 함수가 26개 → 새 기능마다 테스트 1개 추가
 
 ### 환경 (다음 세션 시작 시 그대로 사용 가능)
 - Geode SDK (D:\hitbox_dumper, GEODE_SDK env), VS 2022 BuildTools, CMake, Ghidra 12.0.4
