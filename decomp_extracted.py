@@ -563,6 +563,34 @@ Spider:
 """
 
 
+# =============================================================================
+# 9차: 추가 DAT 상수 + 큰 sub-function 들 (Spider/collision 정밀 처리)
+# =============================================================================
+
+# 추가 DAT 상수 (Round 9 — Spider + collisionCheckObjects 가 사용)
+ADDITIONAL_DAT_CONSTANTS_R9 = {
+    0x622ba4: ("float 0.8",     "?"),
+    0x622ff0: ("float 4.0",     "충돌 4단위 임계값"),
+    0x623068: ("float 8.0",     "충돌 8단위 임계값"),
+    0x623210: ("float 60.0",    "각도 60도 (회전)"),
+    0x623294: ("float 90.0",    "각도 90도 (slope)"),
+    0x6235a0: ("float 3000.0",  "x 속도/거리 임계값"),
+    0x623610: ("float 9999.0",  "max 값"),
+    0x623730: ("float -2.0",    "음수 임계값 (vy)"),
+    0x6237a8: ("float -4.0",    "음수 임계값 (vy)"),
+    0x62381c: ("float -10.0",   "음수 임계값 (vy)"),
+}
+
+# 9차 dump 함수 — Spider + collisionCheckObjects sub-calls (큰 함수 위주)
+ROUND9_BIG_FUNCS = {
+    0x38f810: ("?_38f810", 744, "★ 거대 함수 — collisionCheckObjects 가 호출"),
+    0x211620: ("?_211620", 286, "GJBaseGameLayer 큰 함수 (collision 처리?)"),
+    0x2168d0: ("?_2168d0", 209, "GJBaseGameLayer 함수"),
+    0x3a0700: ("?_3a0700", 192, "PlayerObject 함수"),
+    0x211260: ("?_211260", 173, "GJBaseGameLayer 함수"),
+}
+
+
 COLLISION_TRIGGER_MECHANISM = """
 실제 collision 트리거 (1815) 발동 흐름:
 
