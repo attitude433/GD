@@ -611,6 +611,61 @@ FLOAT_BITWISE_MASKS = {
 }
 
 
+UFO_MODE_PHYSICS = """
+17차 — UFO 모드 (player[0x9bb]=1) 물리 분기 추출 (updateMove L603-672):
+
+UFO 만의 X-axis smoothing (m_smoothXVelocity = player[0x13c]):
+
+조건: NOT (UFO disabled OR isJumping OR isDying)
+이 분기는 dash 모드 (player[0x165]=1) 일 때만 활성:
+
+  dVar3 = player.m_xVelocity (0x15f)
+
+  # 가속도 결정:
+  fVar21 = 0.2  (DAT_140622a74)              # base
+  if (특정 조건):     fVar21 = 0.1  (DAT_140622a10)
+  if jumpDirReverse:  fVar23 = DAT_140622aa0  # 다른 가속
+
+  # 방향에 따른 smoothXVel 업데이트:
+  if jumpHeldDown direction:
+      m_smoothXVel = m_smoothXVel - dt*accel  # 감속
+  elif jumpHeldUp direction:
+      m_smoothXVel = m_smoothXVel + dt*accel  # 가속
+  else:
+      m_smoothXVel = clamp toward m_xVel
+
+  # ★ 핵심 클램프:
+  m_smoothXVel = clampf(m_smoothXVel, -5.0, +5.0)
+                   # DAT_1406237c0 = -5.0, DAT_140623010 = +5.0
+                   # → UFO 의 X 가속 한계 ±5 units/frame
+
+dash 아닐 때:
+  m_smoothXVel = m_xVel  # straight copy
+
+UFO 의 특징:
+- X 가속 ±5 단위 한계 (큐브 보다 훨씬 좁음)
+- jump 누르면 Y 가속 (Ship 처럼) + X 가속 smoothing 별도 처리
+- Dash 모드 한정 X 처리 (보통 모드는 단순 copy)
+
+시뮬 통합:
+- UFO: Ship 모드 코드 + 추가로 X smoothing (clampf -5~+5)
+- jumping = both Y + X smoothing
+"""
+
+
+WAVE_BALL_PHYSICS_NOTES = """
+Wave (m_isWave=0x9bc) 와 Ball (m_isBall=0x9ba) 는
+updateMove 안에 명시적 분기 적게 (각 2-4회).
+이는 두 모드가 "같은 패턴 (jumpHeld → 다른 효과)" 를 사용하기 때문:
+
+Wave: jump = 45° 각도 위로 (각도 변경, Y 가속 + X 가속 둘 다 영향)
+Ball: jump = 중력 반전 (gravity_dir 반전)
+
+이 둘은 별도 함수 (toggleRollMode 0x39b570 또는 specific handler) 에서 처리될 수도.
+다음 라운드: 두 모드의 jump 핸들러 직접 추적 필요.
+"""
+
+
 SHIP_MODE_PHYSICS = """
 16차 — Ship 모드 물리 분기 정밀 추출 (updateMove L383-415):
 
