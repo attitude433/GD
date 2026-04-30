@@ -637,6 +637,54 @@ ROUND10_FUNCS = {
                "GJBaseGameLayer — set lookup helper"),
 }
 
+# =============================================================================
+# 11차: Item / Counter / Timer / Pickup 시스템 (2.2 신규 — 시뮬에 영향 가능)
+# =============================================================================
+
+ITEM_SYSTEM_FUNCS = {
+    # GJBaseGameLayer 측 — 매 프레임 처리
+    0x216290: ("processItems",                    167,
+               "★ 매 프레임 모든 item trigger 처리 (param_1+0x3218 dictionary)"),
+    0x2161b0: ("pickupItem",                       46,
+               "Pickup item — player 가 item 획득 (counter +N)"),
+    0x2341c0: ("getItemValue",                     27,
+               "★ 현재 counter/item 값 read (type, id) → double"),
+    0x234630: ("activateItemCompareTrigger",      190,
+               "★ Item Compare 트리거 — counter 값 비교 → 트리거 발동"),
+    0x234250: ("activateItemEditTrigger",         204,
+               "★ Item Edit 트리거 — counter 값 변경"),
+    0x234a40: ("activatePersistentItemTrigger",   168,
+               "Persistent Item 트리거 (저장되는 카운터)"),
+    0x234e60: ("activateTimerTrigger",            132,
+               "★ Timer 트리거 — 시간 경과 후 발동"),
+    0x38cba0: ("incrementJumps",                   31,
+               "PlayerObject — m_jumps++ (점프 카운터)"),
+}
+
+ITEM_SYSTEM_NOTES = """
+GD 2.2 Item/Counter/Timer 시스템 — 시뮬에 영향 큼:
+
+핵심 데이터 위치:
+- layer + 0x3218 = CCDictionary<key_string, ItemTrigger> (모든 item 등록)
+- DAT_1406c2ee8 = global manager (lazy init, holds counter values)
+- ItemTrigger 의 vfunc 0x660 = getObjectType:
+    0x16 (22) = ItemEditTrigger (counter 변경)
+    0x1f (31) = ItemCompareTrigger (counter 비교)
+
+발동 흐름:
+1. processItems (매 프레임) 가 dictionary 순회
+2. 각 trigger 의 type 분기:
+   - 0x16 (Edit): counter 에 값 적용 (incr/decr/set)
+   - 0x1f (Compare): counter 와 임계값 비교 → 트리거 발동
+3. Pickup 트리거 (pickupItem) 는 player 가 item 닿으면 counter += N
+
+시뮬 통합 우선순위:
+- 데모 레벨에서 Item 시스템을 거의 안 쓰지만 (대부분 Move/Toggle/Spawn)
+- 신규 demon 레벨은 Item-driven 게임플레이 많음 (보스전, 패턴 변화 등)
+- Item value 변화에 따른 트리거 발동 시뮬 가능 (Compare 트리거)
+"""
+
+
 COLLIDED_WITH_SLOPE_INTERNAL_NOTES = """
 collidedWithSlopeInternal (0x38f810, 744줄) 사용 sub-call:
 - slopeYPos (0x1a13b0) — 슬로프 Y 위치 계산 (이미 분석됨)
