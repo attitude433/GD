@@ -409,13 +409,25 @@ GameObject 위치 멤버:
 # 6차: 모드 togglers + Collision block update (어떤 게 player vs collision 인지)
 # =============================================================================
 
-# Geode binding 에서 식별된 모드 toggle 함수 주소 (player 멤버 모드 전환)
+# 7가지 모드 토글러 모두 식별 완료 (Geode binding 검증)
 MODE_TOGGLE_FUNCS = {
-    0x39a4f0: ("toggleFlyMode",    93,  "ship/UFO 등 비행 모드 on/off"),
-    0x39b570: ("toggleRollMode",   55,  "ball 모드"),
-    0x39b6f0: ("toggleRobotMode",  139, "robot — 큰 함수 (점프 차지 처리 등)"),
-    0x39ba70: ("toggleSpiderMode", 141, "spider — 매우 큰 (텔레포트 점프)"),
-    0x39ab20: ("toggleSwingMode",  71,  "swing"),
+    0x39a4f0: ("toggleFlyMode",    93,  "Ship 모드 (비행)"),
+    0x39a820: ("toggleBirdMode",   88,  "UFO 모드 (Bird = 새 = UFO)"),
+    0x39ab20: ("toggleSwingMode",  71,  "Swing 모드 (스윙코프터, 2.2 신규)"),
+    0x39af90: ("toggleDartMode",   99,  "Wave 모드 (Dart = 화살)"),
+    0x39b570: ("toggleRollMode",   55,  "Ball 모드 (구르기)"),
+    0x39b6f0: ("toggleRobotMode",  139, "Robot 모드 (charge jump)"),
+    0x39ba70: ("toggleSpiderMode", 141, "Spider 모드 (instant teleport)"),
+}
+
+# Mode 진입/탈출 시 호출되는 추가 함수
+MODE_LIFECYCLE_FUNCS = {
+    0x2178c0: ("canBeActivatedByPlayer", 49,
+               "player vs trigger — 발동 가능한지 체크 (P1/P2 분기, mode 호환성)"),
+    0x212ef0: ("playerWillSwitchMode",   89, "모드 전환 직전 hook"),
+    0x212c20: ("switchToRobotMode",      34, "PlayLayer-side Robot 전환"),
+    0x212d10: ("switchToSpiderMode",     34, "PlayLayer-side Spider 전환"),
+    0x213180: ("updateDualGround",       77, "Dual 모드 P1/P2 분리"),
 }
 
 # 슬로프/회전 처리 함수
