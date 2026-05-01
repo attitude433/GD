@@ -1,0 +1,62 @@
+{
+  "_meta": {
+    "STATUS": "✅ binary 직접 추출 — GJEffectManager::getString @ 0x2eaf70",
+    "extracted": "2026-05-01",
+    "total_keys": 47
+  },
+  "color_section": {
+    "kS38": "color channel list (각 channel: r,g,b,opacity,blending,id 등)",
+    "kS39": "color channel separator/terminator"
+  },
+  "level_setting_keys": {
+    "kA2": "Game mode (cube=0, ship=1, ball=2, ufo=3, wave=4, robot=5, spider=6, swing=7)",
+    "kA3": "Mini mode (0/1)",
+    "kA4": "Speed (0=1x, 1=0.5x, 2=2x, 3=3x, 4=4x)",
+    "kA6": "Background ID",
+    "kA7": "Ground ID",
+    "kA8": "Dual mode (0/1)",
+    "kA9": "Inv. gravity (0/1)",
+    "kA10": "?",
+    "kA11": "Flip 2P controls",
+    "kA13": "Song offset",
+    "kA14": "Guidelines (string)",
+    "kA15": "Fade in (0/1)",
+    "kA16": "Fade out (0/1)",
+    "kA17": "Ground ID 2",
+    "kA18": "Font",
+    "kA19": "?",
+    "kA20": "?",
+    "kA21": "?",
+    "kA22": "?",
+    "kA23": "?",
+    "kA24": "?",
+    "kA25": "Title",
+    "kA26": "?",
+    "kA27": "?",
+    "kA28": "?",
+    "kA29": "?",
+    "kA31": "?",
+    "kA32": "?",
+    "kA33": "?",
+    "kA34": "?",
+    "kA35": "?",
+    "kA36": "?",
+    "kA37": "?",
+    "kA38": "?",
+    "kA39": "?",
+    "kA40": "Platformer mode (0/1)",
+    "kA41": "?",
+    "kA42": "?",
+    "kA43": "?",
+    "kA44": "?",
+    "kA45": "?",
+    "kA46": "?",
+    "kA47": "?",
+    "kA48": "?"
+  },
+  "separators": {
+    ",": "key-value separator (object encoding)",
+    "|": "channel/section separator"
+  },
+  "note": "kA20-39, kA41-48 의 정확한 의미는 추가 trace 필요. 일단 binary 에서 키 존재 검증."
+}

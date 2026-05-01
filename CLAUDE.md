@@ -168,7 +168,9 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 | 시뮬레이터 (큐브) | **85%** | 12 트리거 + Ring/Touch/Mini/Block-block 통합, 26/26 테스트 |
 | 트리거 catalog | **100%** | 80개 모두 디컴파일 + 분석 (게임플레이 + 디자인) |
 | 점프 AI | 30% | greedy 동작 (ring 사용 가능), BFS/A* 미구현 |
-| Ghidra 디컴파일 환경 | 100% | GD.exe 199+ 함수 + 86+ DAT 추출 (`decomp_extracted.py`) |
+| Ghidra 디컴파일 환경 | 100% | GD.exe **243+ 함수** + 100+ DAT 추출 |
+| 모드별 죽음 조건 | **부분** | 4 kill paths + 6 면역 검증, 일부 flag (0x9b1, 0x9c2 등) 의미 미확인 |
+| **레벨 생성 / Editor 함수** | **신규** | 28개 dump (getSaveString, getLevelString, createObject, group/color channel 관리) |
 | 생성 시스템 | 0% | 아직 시작 안 함 |
 
 ### 완료된 거

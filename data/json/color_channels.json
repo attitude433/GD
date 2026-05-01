@@ -1,0 +1,96 @@
+{
+  "_meta": {
+    "STATUS": "✅ binary 사용 위치 검증 (커뮤니티 표준 일치)",
+    "extracted": "2026-05-01"
+  },
+  "well_known_channels": {
+    "1000": {
+      "name": "BG",
+      "meaning": "Background color"
+    },
+    "1001": {
+      "name": "G",
+      "meaning": "Ground color"
+    },
+    "1002": {
+      "name": "Line",
+      "meaning": "Floor line"
+    },
+    "1003": {
+      "name": "3DL",
+      "meaning": "3D ground line"
+    },
+    "1004": {
+      "name": "Object",
+      "meaning": "Default object color"
+    },
+    "1005": {
+      "name": "P1",
+      "meaning": "Player 1 color"
+    },
+    "1006": {
+      "name": "P2",
+      "meaning": "Player 2 color"
+    },
+    "1007": {
+      "name": "Line2",
+      "meaning": "Secondary line"
+    },
+    "1009": {
+      "name": "LBG/HBG",
+      "meaning": "Lighter BG (hovering)"
+    },
+    "1010": {
+      "name": "G2",
+      "meaning": "Ground 2 (dual)"
+    },
+    "1011": {
+      "name": "BG2",
+      "meaning": "Background 2 (dual)"
+    },
+    "1012": {
+      "name": "MG/MidG",
+      "meaning": "Middleground"
+    },
+    "1013": {
+      "name": "MG2",
+      "meaning": "Middleground 2"
+    }
+  },
+  "binary_verified_in": {
+    "1000": [
+      "postCollisionCheck",
+      "updateObjectLabel",
+      "activatePersistentItemTrigger"
+    ],
+    "1001": [
+      "destroyPlayer",
+      "getNextColorChannel",
+      "triggerObject_0x4bc180"
+    ],
+    "1004": [
+      "processCommands",
+      "trigEffect_0x17ab00"
+    ],
+    "1005": [
+      "updateGameObjects",
+      "transferDefaultColors",
+      "addObject"
+    ],
+    "1010": [
+      "updateColors",
+      "updateGroups"
+    ],
+    "1011": [
+      "updateColors",
+      "updateGroups",
+      "setupCustomSprites"
+    ],
+    "1012": [
+      "update",
+      "processCommands",
+      "setupCustomSprites"
+    ]
+  },
+  "note": "1008, 1013-onwards 는 사용 패턴 검증되지만 정확한 의미는 게임 안 에디터 에서 확인 가능"
+}
