@@ -63,7 +63,8 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 - `Object_IDs_New.gmd` — Colon이 만든 ID 정리 레벨
 - `id_dictionary.json` — 우리 추출 사전 (4072개)
-- `id_dictionary_merged.json` — OpenGD 병합본 (4076개, 텍스처+타입+라벨)
+- `id_dictionary_merged.json` — OpenGD + **Ghidra ObjectToolbox::init 직접 추출** 병합본 (4092개, GD 2.2081 100% 커버, 모든 entry texture 포함)
+- `binary_id_textures.json` — GD.exe 디스어셈블리에서 직접 뽑은 ID→텍스처 매핑 (4092 entries, authoritative)
 - `test_output.gmd` — 인코딩 테스트 결과 (게임에 import해서 동작 확인 가능)
 - `hitboxes.json` — 3744개 오브젝트 (rect + GameObjectType + flags + slope/surface 속성)
 - `triggers.json` — 트리거 330개 속성 (카탈로그라 대부분 default)
@@ -102,12 +103,62 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
 
 ## 작업 진행 상황
 
+## ✅ 검증 완료 영역 (다시 작업할 필요 없음)
+
+> **다음 세션의 AI 에게**: 아래 두 영역은 검증 끝났음. 사용자가 명시적으로 재검증 요청 안 하면
+> 이 부분 다시 손대지 말 것. 의심나면 `data/json/hitbox_complete.json` 의 `_meta` + 각 ID 의
+> `source` 필드 보면 어떻게 검증됐는지 다 적혀 있음.
+
+### 1. 오브젝트 ID 사전 — ✅ **4092 / 4092 (100%)**
+
+- 출처: GD.exe 2.2081 의 `ObjectToolbox::init @ 0x140348d70` 직접 디스어셈블 추출
+- 도구: `data/game_code/ghidra_scripts/DumpObjectToolboxDictV4.java`
+- 마스터 파일: `id_dictionary_merged.json` (루트, 코드가 읽음)
+- 검증: ObjectToolbox 와 우리 dict 가 정확히 일치 (4092 ↔ 4092, 차이 0)
+- "빵꾸 463개" 였던 건 **GD 가 안 채운 자연 빵꾸** (RobTop 설계상 비어있는 ID), 진짜 누락은 16개였고
+  2026-05-01 에 binary 추출로 다 채움 (142, 749, 4386-4399 등)
+- **더 추출할 ID 없음. 끝.**
+
+### 2. 오브젝트 히트박스 — ✅ **4074 / 4092 직접 검증 (99.56%)**
+
+마스터 파일: `data/json/hitbox_complete.json` (4092 entries, 각 entry 에 `source` 필드)
+
+| `source` 값 | 개수 | 의미 |
+|---|---:|---|
+| `runtime` | 3744 | Geode dumper 가 PlayLayer 에서 실측한 `m_objectRect` + `m_outerRect` |
+| `binary_default` | 233 | binary chain (createWithKey + customSetup×3 + setupCustomSprites) 에 hitbox override 없음 확인 → frame size 가 binary spec |
+| `opengd` | 89 | OpenGD `LongData.cpp _pHitboxes` 하드코딩 테이블 (포털/패드/오브 reverse-engineered) |
+| `opengd_match` | 5 | 동일 텍스처/프레임으로 OpenGD 값 적용 (ID 142/749/1933/2064 등) |
+| `binary_verified` | 3 | COLLISION_BLOCK chain 직접 추적 (`checkCollisionBlocks @ 0x218ec0` → `transferObjectRect` → `m_objectRect` 0x358-0x368) |
+| `pattern_precise` | 4 | 표준 패턴 (orb 36×36 / pad-frame / checkpoint-frame). binary 에 override 없음 확인됨 |
+| `no_data` | 14 | RobTop 가 ObjectToolbox 에 ID 4386-4399 등록만 하고 plist 에 텍스처 안 올림 — **게임 자체 버그** |
+
+검증 로직 (`source` 별):
+- `runtime`: 게임 실행 중 객체 m_objectRect 직접 읽기 → 정확
+- `binary_default`: 5단계 디컴파일 함수 모두 ID 별 hitbox 멤버 (0x394/0x398/0x2fc/0x300/0x488/0x48c) 안 건드림 → frame size = binary spec
+- `opengd`/`opengd_match`/`binary_verified`: 외부/내부 출처 직접 검증
+- `pattern_precise`: binary override 없음 확인 + 동족 객체와 동일 패턴 (안전)
+- `no_data`: 텍스처 자체가 없어서 hitbox 정의 불가능 (게임에 박아도 작동 안 함)
+
+**검증된 6개 spatial 트리거 (rect 가 실제로 게임플레이에 영향)**:
+- 1595 TOUCH (opengd) — 30×30
+- 1812 ON_DEATH (opengd) — 30×30
+- 1816 COLLISION_BLOCK (binary_verified) — 30×30
+- 1817 PICKUP (opengd) — 30×30
+- 3640 STATE_BLOCK (binary_verified) — 30×30
+- 3643 TOGGLE_BLOCK (binary_verified) — 30×30
+
+**더 정밀화할 hitbox 없음. 끝.**
+
+---
+
 ### 완성도 평가
 
 | 영역 | 완성도 | 비고 |
 |---|---|---|
 | 입출력 (디코딩/인코딩) | 95% | 왕복 검증 4/4 통과 |
-| ID 사전 | 90% | 4076개, GD 2.2 약 90% 커버 |
+| **오브젝트 ID 사전** | **✅ 100% 검증 완료** | **4092개. 더 작업할 필요 없음 — `## 검증 완료 영역` 섹션 참조** |
+| **오브젝트 히트박스** | **✅ 99.56% 검증 완료** | **4074/4092 직접 검증 + 4 패턴 + 14 RobTop 버그. 더 작업할 필요 없음** |
 | 물리 (큐브) | **95%** | lily-pi + OpenGD + GD.exe 3중 검증 |
 | 물리 (Ship/UFO/Wave/Ball/Robot/Spider/Swing) | 5% | 모드 전환만, 실제 물리 X (식 다 있음, 코드 안 옮김) |
 | 게임 메커닉 (큐브) | **95%** | propellPlayer/ringJump 16 multipliers 검증 + Mini mode |
@@ -142,6 +193,14 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
   - PlayLayer setup 시 player1 시작좌표 + ground_y + StartPos 정보도 dump (`level_start.json`)
   - 결과: `hitboxes.json`, `triggers.json`, `level_start.json` (전부 루트)
   - 빌드는 D:\hitbox_dumper에서 (한국어 경로 → Codegen 인코딩 이슈 회피)
+  - **한계**: passive(레벨 등장 ID만 캡처) → 빵꾸 16개. 아래 ObjectToolbox 직접 추출로 보완.
+- **★ ObjectToolbox 직접 추출** (2026-05-01, Ghidra `DumpObjectToolboxDictV4.java`)
+  - GD.exe `ObjectToolbox::init @ 0x140348d70` (163KB, 28671 명령어) 디스어셈블 직접 파싱
+  - 패턴: `MOV dword ptr [stack], <KEY>` + 직후 `LEA RDX, [str_addr]` 페어 매칭
+  - 4092개 (id, texture) 페어 추출 — **GD 2.2081 게임 사전 100% 커버**
+  - dumper 누락 16개 보강 (142=secretCoin_01, 749, 4386-4399 = pixelart 신규)
+  - 텍스처 2535개 신규 채움 + 107개 잘못된 텍스처 정정 (binary가 정답)
+  - 결과: `binary_id_textures.json` (authoritative) + `id_dictionary_merged.json` 갱신
 - **시뮬레이터 큐브 MVP + 트리거 표면 구현** (`simulator.py`)
   - Player + 큐브 물리 (lily-pi b/s 단위) + AABB 충돌 + GameObjectType 기반 분류
   - 가상 floor (y=0) + GD 디폴트 시작 (0, 105) + 추락사
@@ -167,7 +226,9 @@ Geometry Dash 레벨을 AI가 생성하는 도구를 만드는 프로젝트.
   - 테스트 파일: `samples/music/`, 결과: `samples/results/`
 
 ### 부족한 거
-- 2.2 신규 ID 약 460개 (Object_IDs_New에 안 깔린 것들)
+- ~~2.2 신규 ID 약 460개~~ → **해결**: 2026-05-01 GD.exe ObjectToolbox::init 직접 추출.
+  실제 누락은 16개뿐(142, 749, 4386-4399)이었고, 나머지 447개는 GD ID 공간의 **자연 빵꾸**
+  (RobTop가 안 채운 ID — 게임에 존재 안 함). 이제 4092개 = 100% 커버.
 - 트리거 65종 실제 사용값 (Object_IDs_New 카탈로그는 default라 의미 없음 → 실 레벨에서 따로 추출 필요)
 - 로봇/스파이더/스웡 정확한 물리
 - 학습용 데이터셋

@@ -1,0 +1,64 @@
+# DAT constants used in collidedWithObjectVariant (and friends)
+# Format: addr | float | double | int32 | int64 | bytes
+# imageBase = 0x140000000
+
+DAT_140622b08  (offset=0x622b08)
+  float=0.5  double=3.540042223448836E-5  i32=0x3f000000 (1056964608)  i64=0x3f028f5d3f000000
+  bytes=00 00 00 3f 5d 8f 02 3f 
+
+DAT_140622ca0  (offset=0x622ca0)
+  float=2.0  double=0.03999999910593033  i32=0x40000000 (1073741824)  i64=0x3fa47ae140000000
+  bytes=00 00 00 40 e1 7a a4 3f 
+
+DAT_140622cf0  (offset=0x622cf0)
+  float=-1.0842022E-19  double=0.10000000149011612  i32=0xa0000000 (-1610612736)  i64=0x3fb99999a0000000
+  bytes=00 00 00 a0 99 99 b9 3f 
+
+DAT_140622d18  (offset=0x622d18)
+  float=-1.0842022E-19  double=0.20000000298023224  i32=0xa0000000 (-1610612736)  i64=0x3fc99999a0000000
+  bytes=00 00 00 a0 99 99 c9 3f 
+
+DAT_140622e18  (offset=0x622e18)
+  float=0.0  double=1.0  i32=0x0 (0)  i64=0x3ff0000000000000
+  bytes=00 00 00 00 00 00 f0 3f 
+
+DAT_140622e60  (offset=0x622e60)
+  float=0.0  double=2.0  i32=0x0 (0)  i64=0x4000000000000000
+  bytes=00 00 00 00 00 00 00 40 
+
+DAT_140622e98  (offset=0x622e98)
+  float=0.0  double=5.0  i32=0x0 (0)  i64=0x4014000000000000
+  bytes=00 00 00 00 00 00 14 40 
+
+DAT_140622ef0  (offset=0x622ef0)
+  float=0.0  double=15.0  i32=0x0 (0)  i64=0x402e000000000000
+  bytes=00 00 00 00 00 00 2e 40 
+
+DAT_140623000  (offset=0x623000)
+  float=0.0  double=1000.0  i32=0x0 (0)  i64=0x408f400000000000
+  bytes=00 00 00 00 00 40 8f 40 
+
+DAT_140623010  (offset=0x623010)
+  float=5.0  double=2867.1997117996216  i32=0x40a00000 (1084227584)  i64=0x40a6666640a00000
+  bytes=00 00 a0 40 66 66 a6 40 
+
+DAT_140623028  (offset=0x623028)
+  float=6.0  double=12288.001976013184  i32=0x40c00000 (1086324736)  i64=0x40c8000040c00000
+  bytes=00 00 c0 40 00 00 c8 40 
+
+DAT_14062307c  (offset=0x62307c)
+  float=10.0  double=786432.1271972656  i32=0x41200000 (1092616192)  i64=0x4128000041200000
+  bytes=00 00 20 41 00 00 28 41 
+
+DAT_1406243c0  (offset=0x6243c0)
+  float=NaN  double=NaN  i32=0x7fffffff (2147483647)  i64=0x7fffffff7fffffff
+  bytes=ff ff ff 7f ff ff ff 7f 
+
+DAT_1406c2458  (offset=0x6c2458)
+  float=0.0  double=0.0  i32=0x0 (0)  i64=0x0
+  bytes=00 00 00 00 00 00 00 00 
+
+DAT_1406c2ed8  (offset=0x6c2ed8)
+  float=0.0  double=0.0  i32=0x0 (0)  i64=0x0
+  bytes=00 00 00 00 00 00 00 00 
+
